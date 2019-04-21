@@ -22,11 +22,11 @@ linkCollisionShapeIndices = [colBoxId]
 linkVisualShapeIndices = [-1]
 linkPositions = [[0, 0.5, 0]]
 linkOrientations = [[0, 0, 0, 1]]
-linkInertialFramePositions = [[0, 0, 0]]
+linkInertialFramePositions = [[1, 0, 1]]
 linkInertialFrameOrientations = [[0, 0, 0, 1]]
 indices = [0]
 jointTypes = [p.JOINT_REVOLUTE]
-axis = [[1, 0, 0]]
+axis = [[0.5, 0, 0]]
 baseOrientation = [1, 0, 0, 1]
 
 boxId = p.createMultiBody(0, -1, -1, [0, 0, 1.5], baseOrientation,
