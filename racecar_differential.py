@@ -1,3 +1,4 @@
+import sys
 import math
 import time
 
@@ -18,58 +19,69 @@ p.setRealTimeSimulation(useRealTimeSim)  # either this
 # p.loadURDF("plane.urdf")
 p.loadSDF("stadium.sdf")
 
-car = p.loadURDF("data/racecar_differential.urdf")  # , [0,0,2],useFixedBase=True)
+# car = p.loadURDF("data/racecar_differential.urdf")  # , [0,0,2],useFixedBase=True)
+car = p.loadSDF("data/model.sdf")  # , [0,0,2],useFixedBase=True)
+print(car)
+car = car[0]
+print(p.getNumJoints(car))
 for i in range(p.getNumJoints(car)):
     print(p.getJointInfo(car, i))
 for wheel in range(p.getNumJoints(car)):
     p.setJointMotorControl2(car, wheel, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
     p.getJointInfo(car, wheel)
 
-p.resetBasePositionAndOrientation(car, [0, 0, 0],[0,0,0,1])
+# sys.exit()
+p.resetBasePositionAndOrientation(car, [0, 0, 0.5],[0,0,0,1])
 
 pixelWidth = 320
 pixelHeight = 220
 camDistance = 4
 camDistance = 0.5
 upAxisIndex = 2
-camera_height = 0.3
+camera_height = 0.9
 
 wheels = [8, 15]
 print("----------------")
+# sys.exit()
 
 # p.setJointMotorControl2(car,10,p.VELOCITY_CONTROL,targetVelocity=1,force=10)
-c = p.createConstraint(car, 9, car, 11, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=1, maxForce=10000)
-
-c = p.createConstraint(car, 10, car, 13, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=-1, maxForce=10000)
-
-c = p.createConstraint(car, 9, car, 13, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=-1, maxForce=10000)
-
-c = p.createConstraint(car, 16, car, 18, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=1, maxForce=10000)
-
-c = p.createConstraint(car, 16, car, 19, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=-1, maxForce=10000)
-
-c = p.createConstraint(car, 17, car, 19, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=-1, maxForce=10000)
-
-c = p.createConstraint(car, 1, car, 18, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=-1, gearAuxLink=15, maxForce=10000)
-c = p.createConstraint(car, 3, car, 19, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                       parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-p.changeConstraint(c, gearRatio=-1, gearAuxLink=15, maxForce=10000)
+# c = p.createConstraint(car, 9, car, 11, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=1, maxForce=10000)
+#
+# c = p.createConstraint(car, 10, car, 13, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=-1, maxForce=10000)
+#
+# c = p.createConstraint(car, 9, car, 13, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=-1, maxForce=10000)
+#
+# c = p.createConstraint(car, 16, car, 18, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=1, maxForce=10000)
+#
+# c = p.createConstraint(car, 16, car, 19, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=-1, maxForce=10000)
+#
+# c = p.createConstraint(car, 17, car, 19, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=-1, maxForce=10000)
+#
+# c = p.createConstraint(car, 1, car, 18, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=-1, gearAuxLink=15, maxForce=10000)
+# c = p.createConstraint(car, 3, car, 19, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+#                        parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+# p.changeConstraint(c, gearRatio=-1, gearAuxLink=15, maxForce=10000)
 
 steering = [0, 2]
+
+
+# for vector
+wheels = [3, 4, 5, 6]
+steering = [3, 4]
 
 targetVelocitySlider = p.addUserDebugParameter("wheelVelocity", -50, 50, 0)
 maxForceSlider = p.addUserDebugParameter("maxForce", 0, 50, 20)
