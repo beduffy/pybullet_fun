@@ -118,9 +118,9 @@ class Vector:
         # car = self._p.loadURDF(os.path.join(self.urdfRootPath, "racecar/racecar_differential.urdf"),
         #                        [0, 0, .2], useFixedBase=False)
         car = p.loadSDF("model.sdf", globalScaling=3.0)  # , [0,0,2],useFixedBase=True)
-        print(car)
+        # print(car)
         car = car[0]
-        print(p.getNumJoints(car))
+        # print(p.getNumJoints(car))
         self.racecarUniqueId = car
         # for i in range (self._p.getNumJoints(car)):
         #	print (self._p.getJointInfo(car,i))
@@ -215,49 +215,62 @@ class Vector:
         (5, b'anki_vector::anki_vector::robot::wheel_FL_hinge'
         (6, b'anki_vector::anki_vector::robot::wheel_FR_hinge'
         '''
-        wheels = [3, 4, 5, 6]
-        turn_wheels = [3, 5]
+        all_wheels = [3, 4, 5, 6]
         back_wheels = [3, 4]
-        # wheels = [3, 4]
         right_side_wheels = [4, 6]
+        left_side_wheels = [3, 5]
         # todo above into reset
-        maxForce = 20
-
-        # for wheel in wheels:
-        #     p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL, targetVelocity=targetVelocity,
-        #                             force=maxForce)
-        #
-        # for wheel in right_side_wheels:
-        #     p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL, targetVelocity=-targetVelocity,
-        #                             force=maxForce)
+        maxForce = 5
 
         if self.discrete_actions:
             if motorCommands == 0:
                 # go forward
-                print('go forward')
-                for wheel in back_wheels:
+                # print('go forward')
+                for wheel in all_wheels:
                     p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL, targetVelocity=targetVelocity,
                                             force=maxForce)
                 # todo stop after 50-250ms?
                 # time.sleep(0.5)
+                # for wheel in back_wheels:
+                #     p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL, targetVelocity=targetVelocity,
+                #                             force=0)
+
             elif motorCommands == 1:
                 # turn left
-                print('turn left')
+                # print('turn left')
                 vel = targetVelocity
-                for idx, wheel in enumerate(turn_wheels):
+                for idx, wheel in enumerate(right_side_wheels):
                     p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL,
                                             targetVelocity=vel,
                                             force=maxForce)
-                    vel = -targetVelocity
+                vel = -targetVelocity
+                for idx, wheel in enumerate(left_side_wheels):
+                    p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL,
+                                            targetVelocity=vel,
+                                            force=maxForce)
+
                 # time.sleep(0.5)
+
             elif motorCommands == 2:
                 # turn right
-                print('turn right')
+                # print('turn right')
                 vel = -targetVelocity
-                for wheel in turn_wheels:
+                for wheel in right_side_wheels:
                     p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL,
                                             targetVelocity=vel,
                                             force=maxForce)
-                    vel = targetVelocity
+                vel = targetVelocity
+                for idx, wheel in enumerate(left_side_wheels):
+                    p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL,
+                                            targetVelocity=vel,
+                                            force=maxForce)
 
+                # time.sleep(0.5)
+            elif motorCommands == 3:
+                # go backward
+                # print('go backward')
+                for wheel in all_wheels:
+                    p.setJointMotorControl2(self.racecarUniqueId, wheel, p.VELOCITY_CONTROL,
+                                            targetVelocity=-targetVelocity,
+                                            force=maxForce)
                 # time.sleep(0.5)
