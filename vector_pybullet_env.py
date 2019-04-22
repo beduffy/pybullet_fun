@@ -11,12 +11,8 @@ from gym import spaces
 from gym.utils import seeding
 import numpy as np
 import pybullet
-# from
-# from pybullet import racecar
-# from pybullet_envs import racecar
 from agent_env_classes.obj_physics_models import Racecar, Vector
 import random
-# from pybullet import bullet_client
 import pybullet_utils.bullet_client as bullet_client
 import pybullet_data
 from pkg_resources import parse_version
@@ -32,7 +28,7 @@ class VectorBulletEnv(gym.Env):
 
     def __init__(self,
                  urdfRoot=pybullet_data.getDataPath(),
-                 actionRepeat=50,
+                 actionRepeat=1,
                  isEnableSelfCollision=True,
                  isDiscrete=False,
                  renders=False):
@@ -51,6 +47,7 @@ class VectorBulletEnv(gym.Env):
                 connection_mode=pybullet.GUI)
         else:
             self._p = bullet_client.BulletClient()
+        # self._p = bullet_client.BulletClient()
 
         self.seed()
         # self.reset()
@@ -60,7 +57,7 @@ class VectorBulletEnv(gym.Env):
         # observation_high = np.array([np.finfo(np.float32).max] * observationDim)
         observation_high = np.ones(observationDim) * 1000  # np.inf
         if (isDiscrete):
-            self.action_space = spaces.Discrete(9)
+            self.action_space = spaces.Discrete(4)
         else:
             action_dim = 2
             self._action_bound = 1
@@ -75,6 +72,7 @@ class VectorBulletEnv(gym.Env):
         self._p.setTimeStep(self._timeStep)
         # self._p.loadURDF(os.path.join(self._urdfRoot,"plane.urdf"))
         stadiumobjects = self._p.loadSDF(os.path.join(self._urdfRoot, "stadium.sdf"))
+        # todo remove warnings
         # move the stadium objects slightly above 0
         # for i in stadiumobjects:
         #	pos,orn = self._p.getBasePositionAndOrientation(i)
@@ -88,17 +86,20 @@ class VectorBulletEnv(gym.Env):
         bally = dist * math.cos(ang)
         ballz = 1
 
+        ballx, bally, ballz = [5, 5, 5]
+
         self._ballUniqueId = self._p.loadURDF(os.path.join(self._urdfRoot, "sphere2.urdf"),
                                               # todo get cup
                                               [ballx, bally, ballz])
+        # todo reset everything properly?
         self._p.setGravity(0, 0, -10)
         # self._racecar = Racecar(self._p, urdfRootPath=self._urdfRoot,
         #                                 timeStep=self._timeStep)
         self._racecar = Vector(self._p, urdfRootPath=self._urdfRoot,
                                timeStep=self._timeStep)
         self._envStepCounter = 0
-        for i in range(100):
-            self._p.stepSimulation()
+        # for i in range(100):  # todo why was this here?
+        #     self._p.stepSimulation()
         self._observation = self.getExtendedObservation()
         return np.array(self._observation)
 
@@ -121,7 +122,6 @@ class VectorBulletEnv(gym.Env):
         return self._observation
 
     def step(self, action):
-        print(self._timeStep)
         if (self._renders):
             basePos, orn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
             # self._p.resetDebugVisualizerCamera(1, 30, -40, basePos)
@@ -198,16 +198,33 @@ class VectorBulletEnv(gym.Env):
         _step = step
 
 
-# env = VectorBulletEnv(isDiscrete=False, renders=True)
-# env = VectorBulletEnv(isDiscrete=True, renders=True)
-#
-# env.reset()
-#
-# for i in range(100000):
-#     # image = env.render()
-#     action = env.action_space.sample()
-#     state, reward, done, info = env.step(action)
+if __name__ == '__main__':
 
+    # env = VectorBulletEnv(isDiscrete=False, renders=True)
+    # env = VectorBulletEnv(isDiscrete=True, renders=True)
+    env = VectorBulletEnv(isDiscrete=True, renders=False)
+
+    env.reset()
+
+    num_repeat = 200
+    action_arr = [1] * num_repeat + [0] * num_repeat + [2] * num_repeat + [3] * num_repeat
+    for ep in range(5):
+        env.reset()
+        # for action in action_arr:
+        start = time.time()
+        for i in range(100000):
+            # image = env.render()
+            action = env.action_space.sample()
+            state, reward, done, info = env.step(action)
+
+            if i % 100 == 0:
+                time_taken = time.time() - start
+                time_taken_for_1 = time_taken / 100
+                fps = 1 / time_taken_for_1
+                print('Time taken to do 100 steps: {}. For one: {}. fps: {}'.format(time_taken,
+                                                                           time_taken_for_1,
+                                                                           fps))
+                start = time.time()
 
 
 
@@ -217,7 +234,7 @@ class VectorBulletEnv(gym.Env):
 
 import sys
 
-sys.exit()
+'''sys.exit()
 import math
 import time
 
@@ -298,10 +315,11 @@ steering = [0, 2]
 
 # for vector
 '''
-(3, b'anki_vector::anki_vector::robot::wheel_BL_hinge'
+'''(3, b'anki_vector::anki_vector::robot::wheel_BL_hinge'
 (4, b'anki_vector::anki_vector::robot::wheel_BR_hinge'
 (5, b'anki_vector::anki_vector::robot::wheel_FL_hinge'
 (6, b'anki_vector::anki_vector::robot::wheel_FR_hinge'
+'''
 '''
 wheels = [3, 4, 5, 6]
 wheels = [3, 5]
@@ -385,3 +403,4 @@ while (True):
     time.sleep(0.01)
 
     t += 1
+'''
