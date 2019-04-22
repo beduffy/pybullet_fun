@@ -22,17 +22,21 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/body.obj</uri>
+            <uri>body.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
         <pose frame=''>0.015 0 -0.005 0 -0 0</pose>
-        <transparency>0</transparency>
-        <cast_shadows>1</cast_shadows>
+        <!--<transparency>0</transparency>
+        <cast_shadows>1</cast_shadows>-->
         <material>
+            <diffuse>1 0 0 1</diffuse>
+          <!--<script><uri>body.mtl</uri></script>-->
+
           <shader type='pixel'>
             <normal_map>__default__</normal_map>
           </shader>
+
         </material>
       </visual>
       <collision name='collision'>
@@ -112,18 +116,18 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/forklift.obj</uri>
+            <uri>forklift.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
         <pose frame=''>0 0 0.001 0 -0 0</pose>
-        <transparency>0</transparency>
+        <transparency>0.5</transparency>
         <cast_shadows>1</cast_shadows>
         <material>
           <shader type='pixel'/>
         </material>
       </visual>
-      <collision name='collision'>
+      <!--<collision name='collision'>
         <laser_retro>0</laser_retro>
         <max_contacts>10</max_contacts>
         <pose frame=''>-0.019 0 0 0 -0 0</pose>
@@ -177,7 +181,7 @@
             </bullet>
           </contact>
         </surface>
-      </collision>
+      </collision>-->
     </link>
     <link name='anki_vector::anki_vector::robot::head'>
       <pose frame=''>-0.02 -0 0.048 0 -0 0</pose>
@@ -200,18 +204,13 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/head.obj</uri>
+            <uri>head.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
         <pose frame=''>0.02 0 -0.04 0 -0 0</pose>
-        <transparency>0</transparency>
-        <cast_shadows>1</cast_shadows>
-        <material>
-          <shader type='pixel'>
-            <normal_map>__default__</normal_map>
-          </shader>
-        </material>
+
+
       </visual>
       <collision name='collision'>
         <laser_retro>0</laser_retro>
@@ -290,7 +289,7 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/tracks.obj</uri>
+            <uri>tracks.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
@@ -310,7 +309,7 @@
           <emissive>0 0 0 1</emissive>
         </material>
       </visual>
-      <collision name='collision'>
+      <!--<collision name='collision'>
         <laser_retro>0</laser_retro>
         <max_contacts>10</max_contacts>
         <pose frame=''>-0.019 0 0 0 -0 0</pose>
@@ -364,7 +363,7 @@
             </bullet>
           </contact>
         </surface>
-      </collision>
+      </collision>-->
     </link>
     <link name='anki_vector::anki_vector::robot::wheel_BL'>
       <pose frame=''>-0.045 0.022 0.0105 0 -0 0</pose>
@@ -387,7 +386,7 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/wheel_BL.obj</uri>
+            <uri>wheel_BL.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
@@ -478,7 +477,7 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/wheel_BR.obj</uri>
+            <uri>wheel_BR.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
@@ -569,7 +568,7 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/wheel_FL.obj</uri>
+            <uri>wheel_FL.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>
@@ -660,7 +659,7 @@
       <visual name='visual'>
         <geometry>
           <mesh>
-            <uri>meshes/wheel_FR.obj</uri>
+            <uri>wheel_FR.obj</uri>
             <scale>0.01 0.01 0.01</scale>
           </mesh>
         </geometry>

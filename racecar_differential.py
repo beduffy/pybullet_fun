@@ -20,7 +20,7 @@ p.setRealTimeSimulation(useRealTimeSim)  # either this
 p.loadSDF("stadium.sdf")
 
 # car = p.loadURDF("data/racecar_differential.urdf")  # , [0,0,2],useFixedBase=True)
-car = p.loadSDF("data/model.sdf")  # , [0,0,2],useFixedBase=True)
+car = p.loadSDF("model.sdf", globalScaling=3.0)  # , [0,0,2],useFixedBase=True)
 print(car)
 car = car[0]
 print(p.getNumJoints(car))
@@ -31,7 +31,7 @@ for wheel in range(p.getNumJoints(car)):
     p.getJointInfo(car, wheel)
 
 # sys.exit()
-p.resetBasePositionAndOrientation(car, [0, 0, 0.5],[0,0,0,1])
+p.resetBasePositionAndOrientation(car, [0, 0, 0.5], [0,0,0,1])
 
 pixelWidth = 320
 pixelHeight = 220
@@ -80,26 +80,46 @@ steering = [0, 2]
 
 
 # for vector
+'''
+(3, b'anki_vector::anki_vector::robot::wheel_BL_hinge'
+(4, b'anki_vector::anki_vector::robot::wheel_BR_hinge'
+(5, b'anki_vector::anki_vector::robot::wheel_FL_hinge'
+(6, b'anki_vector::anki_vector::robot::wheel_FR_hinge'
+'''
 wheels = [3, 4, 5, 6]
-steering = [3, 4]
+wheels = [3, 5]
+# wheels = [3, 4]
+right_side_wheels = [4, 6]
+# steering = [3]
+# steering = []
 
 targetVelocitySlider = p.addUserDebugParameter("wheelVelocity", -50, 50, 0)
 maxForceSlider = p.addUserDebugParameter("maxForce", 0, 50, 20)
-steeringSlider = p.addUserDebugParameter("steering", -1, 1, 0)
+steeringLeftSlider = p.addUserDebugParameter("steeringleft", -1, 1, 0)
+steeringRightSlider = p.addUserDebugParameter("steeringright", -1, 1, 0)
 t = 0
 value_to_add = 0.0
 while (True):
     maxForce = p.readUserDebugParameter(maxForceSlider)
     targetVelocity = p.readUserDebugParameter(targetVelocitySlider)
-    steeringAngle = p.readUserDebugParameter(steeringSlider)
+    steeringLeftVel = p.readUserDebugParameter(steeringLeftSlider)
+    steeringRightVel = p.readUserDebugParameter(steeringRightSlider)
     # print(targetVelocity)
 
     for wheel in wheels:
         p.setJointMotorControl2(car, wheel, p.VELOCITY_CONTROL, targetVelocity=targetVelocity,
                                 force=maxForce)
 
-    for steer in steering:
-        p.setJointMotorControl2(car, steer, p.POSITION_CONTROL, targetPosition=-steeringAngle)
+    for wheel in right_side_wheels:
+        p.setJointMotorControl2(car, wheel, p.VELOCITY_CONTROL, targetVelocity=-targetVelocity,
+                                force=maxForce)
+
+    # for steer in steering:
+    #     p.setJointMotorControl2(car, steer, p.POSITION_CONTROL, targetPosition=-steeringAngle)
+
+    # for steer in steering:
+    # p.setJointMotorControl2(car, 3, p.VELOCITY_CONTROL, targetVelocity=targetVelocity + steeringLeftVel)
+    # p.setJointMotorControl2(car, 4, p.VELOCITY_CONTROL, targetVelocity=targetVelocity + steeringRightVel)
 
     # if t % 200 == 0:
     car_orientation = p.getBasePositionAndOrientation(car)
@@ -169,8 +189,10 @@ while (True):
                         0.0, -1.0002000331878662, -1.0, 0.0, 0.0, -0.020002000033855438, 0.0]
 
     img_arr = p.getCameraImage(pixelWidth, pixelHeight, viewMatrix=viewMatrix,
-                               projectionMatrix=projectionMatrix, shadow=1,
-                               lightDirection=[1, 1, 1])
+                               projectionMatrix=projectionMatrix,
+                               # shadow=1,
+                               # lightDirection=[1, 1, 1]
+                               )
 
     # viewMatrix = p.computeViewMatrixFromYawPitchRoll(camTargetPos, camDistance, yaw, pitch,
     # 												 roll,

@@ -6,3 +6,4 @@ for i in range(1000):
     #image = env.render()
     action = env.action_space.sample()
     state, reward, done, info = env.step(action)
+    print(reward)
