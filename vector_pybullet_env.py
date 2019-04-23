@@ -87,6 +87,9 @@ class VectorBulletEnv(gym.Env):
         ballz = 1
 
         ballx, bally, ballz = [5, 5, 5]
+        ballx, bally, ballz = [0.5, 0.5, 2]
+
+        quat_orientation = self._p.getQuaternionFromEuler([1, 0, 0])
 
         cup_scale = 0.01
         # obj_file_name = 'coffee_cup.obj'
@@ -94,14 +97,34 @@ class VectorBulletEnv(gym.Env):
         obj_file_name = 'TeaCup.urdf'
 
         self._ballUniqueId = self._p.loadURDF(obj_file_name, basePosition=[ballx, bally, ballz],
-                                              # baseOrientation= # todo from euler to quat
-                                              flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+                                              baseOrientation=quat_orientation,
+                                              flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+                                              )
+
+        ballx, bally, ballz = [-0.5, -0.5, 0.5]
+        obj_file_name = 'coffee_cup.urdf'
+        self._secondCupUniqueId = self._p.loadURDF(obj_file_name, basePosition=[ballx, bally, ballz],
+                                              baseOrientation=quat_orientation,
+                                              flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+                                              )
+
+        range_in_each_dim = 5
+        for i in range(50):
+            ballx, bally, ballz = [random.uniform(-range_in_each_dim, range_in_each_dim),
+                                   random.uniform(-range_in_each_dim, range_in_each_dim),
+                                   random.uniform(1, 4)]
+            obj_file_name = random.choice(['coffee_cup.urdf', 'TeaCup.urdf'])
+            self._secondCupUniqueId = self._p.loadURDF(obj_file_name,
+                                                       basePosition=[ballx, bally, ballz],
+                                                       baseOrientation=quat_orientation,
+                                                       flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+                                                       )
+
         # self._ballUniqueId = self._p.loadURDF(os.path.join(self._urdfRoot, "sphere2.urdf"),
         # [ballx, bally, ballz])
         # self._ballUniqueId = self._p.loadSDF(os.path.join(self._urdfRoot, "teacup_model.sdf"))
         # self._ballUniqueId = self._p.loadSDF("teacup_model.sdf", globalScaling=0.5)
         # self._ballUniqueId = self._ballUniqueId[0]  # array of links
-
 
         # self._ballUniqueIdCol = self._p.createCollisionShape(self._p.GEOM_CYLINDER,
         # # self._ballUniqueId = self._p.createCollisionShape(self._p.GEOM_CYLINDER,
@@ -239,8 +262,6 @@ if __name__ == '__main__':
     # env = VectorBulletEnv(isDiscrete=False, renders=True)
     # env = VectorBulletEnv(isDiscrete=True, renders=True)
     env = VectorBulletEnv(isDiscrete=True, renders=renders)
-
-    env.reset()
 
     num_repeat = 200
     action_arr = [1] * num_repeat + [0] * num_repeat + [2] * num_repeat + [3] * num_repeat
