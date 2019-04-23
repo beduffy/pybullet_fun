@@ -88,9 +88,44 @@ class VectorBulletEnv(gym.Env):
 
         ballx, bally, ballz = [5, 5, 5]
 
-        self._ballUniqueId = self._p.loadURDF(os.path.join(self._urdfRoot, "sphere2.urdf"),
-                                              # todo get cup
-                                              [ballx, bally, ballz])
+        cup_scale = 0.01
+        # obj_file_name = 'coffee_cup.obj'
+        # obj_file_name = 'TeaCup.obj'
+        obj_file_name = 'TeaCup.urdf'
+
+        self._ballUniqueId = self._p.loadURDF(obj_file_name, basePosition=[ballx, bally, ballz],
+                                              # baseOrientation= # todo from euler to quat
+                                              flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        # self._ballUniqueId = self._p.loadURDF(os.path.join(self._urdfRoot, "sphere2.urdf"),
+        # [ballx, bally, ballz])
+        # self._ballUniqueId = self._p.loadSDF(os.path.join(self._urdfRoot, "teacup_model.sdf"))
+        # self._ballUniqueId = self._p.loadSDF("teacup_model.sdf", globalScaling=0.5)
+        # self._ballUniqueId = self._ballUniqueId[0]  # array of links
+
+
+        # self._ballUniqueIdCol = self._p.createCollisionShape(self._p.GEOM_CYLINDER,
+        # # self._ballUniqueId = self._p.createCollisionShape(self._p.GEOM_CYLINDER,
+        #                                                      fileName=obj_file_name,
+        #                                                      meshScale=[cup_scale, cup_scale,
+        #                                                                 cup_scale])
+        # self._ballUniqueId = self._p.createVisualShape(self._p.GEOM_MESH,
+        #                                                fileName=os.path.join(self._urdfRoot,
+        #                                                                      obj_file_name),
+        #                                                # rgbaColor=[1, 0, 0, 1],
+        #                                                meshScale=[cup_scale, cup_scale, cup_scale])
+        #
+        # self._p.createMultiBody(baseMass=1,
+        #                         #baseInertialFramePosition=[0, 0, 0],
+        #                   # baseCollisionShapeIndex=self._ballUniqueId,
+        #                   baseCollisionShapeIndex=self._ballUniqueIdCol,
+        #                   baseVisualShapeIndex=self._ballUniqueId,
+        #                   # basePosition=[((-rangex / 2) + i) * meshScale[0] * 2,
+        #                   #               (-rangey / 2 + j) * meshScale[1] * 2, 1],
+        #                   basePosition = [3, 3, 3],
+        #                   useMaximalCoordinates=True)
+
+
+
         # todo reset everything properly?
         self._p.setGravity(0, 0, -10)
         # self._racecar = Racecar(self._p, urdfRootPath=self._urdfRoot,
@@ -200,9 +235,10 @@ class VectorBulletEnv(gym.Env):
 
 if __name__ == '__main__':
 
+    renders = True
     # env = VectorBulletEnv(isDiscrete=False, renders=True)
     # env = VectorBulletEnv(isDiscrete=True, renders=True)
-    env = VectorBulletEnv(isDiscrete=True, renders=False)
+    env = VectorBulletEnv(isDiscrete=True, renders=renders)
 
     env.reset()
 
