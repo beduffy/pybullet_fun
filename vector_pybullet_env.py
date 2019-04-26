@@ -109,16 +109,25 @@ class VectorBulletEnv(gym.Env):
                                               )
 
         range_in_each_dim = 5
-        for i in range(50):
+        for i in range(1):
             ballx, bally, ballz = [random.uniform(-range_in_each_dim, range_in_each_dim),
                                    random.uniform(-range_in_each_dim, range_in_each_dim),
-                                   random.uniform(1, 4)]
-            obj_file_name = random.choice(['coffee_cup.urdf', 'TeaCup.urdf'])
-            self._secondCupUniqueId = self._p.loadURDF(obj_file_name,
+                                   random.uniform(0.3, 0.3)]
+            # obj_file_name = random.choice(['coffee_cup.urdf', 'TeaCup.urdf'])
+            # obj_file_name = random.choice(['TeaCup.urdf'])
+            obj_file_name = random.choice(['coffee_cup.urdf'])
+            _secondCupUniqueId = self._p.loadURDF(obj_file_name,
                                                        basePosition=[ballx, bally, ballz],
                                                        baseOrientation=quat_orientation,
+                                                       # rgbaColor=[1, 0, 0, 1]
                                                        flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL
                                                        )
+            self._p.changeVisualShape(_secondCupUniqueId, 0,
+                                      # rgbaColor=[random.uniform(0, 1), random.uniform(0, 1),
+                                      #            random.uniform(0, 1), 1]
+                                      rgbaColor=[random.randint(0, 1), random.randint(0, 1),
+                                                 random.randint(0, 1), 1]
+                                      )
 
         # self._ballUniqueId = self._p.loadURDF(os.path.join(self._urdfRoot, "sphere2.urdf"),
         # [ballx, bally, ballz])

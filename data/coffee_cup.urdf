@@ -6,17 +6,28 @@
        <mass value=".0"/>
        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>-->
+    <!--<inertial>
+         <mass value="10"/>
+         <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertia>-->
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-           <mesh filename="coffee_cup.obj" scale="0.1 0.1 0.1"/>
+           <mesh filename="coffee_cup.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <geometry>
+        <cylinder length="15" radius="6"/>
       </geometry>
     </visual>
     <collision>
       <geometry>
 	 	<!--<box size="0.12 0.12 0.12"/>-->
 	 	<!--<box size="0.12 0.10 0.6"/>-->
-	 	<box size="0.2 0.2 0.2"/>
+	 	<!--<box size="0.2 0.2 0.2"/>-->
+	 	<!--<box size="0.683315 0.621832 0.496294"/>-->
+	 	<!--<box size="0.683315 0.496294 0.621832"/>-->
+	 	<!--<box size="1 1 1"/>-->
+	 	<cylinder length="15" radius="6"/>
 	 	<!-- find out size -->
       </geometry>
     </collision>
