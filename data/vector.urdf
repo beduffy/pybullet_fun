@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="TeaCup">
+  <link name="TeaCupLink">
+    <visual>
+      <geometry>
+           <mesh filename="head.obj" scale="0.2 0.2 0.2"/>
+      </geometry>
+       <!--<material name="Material.001">
+        <color rgba="1 0 0 1"/>
+      </material>-->
+      <!--<material></material>-->
+    </visual>
+    <collision>
+      <geometry>
+	 	<mesh filename="head.obj" scale="0.2 0.2 0.2"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
+
