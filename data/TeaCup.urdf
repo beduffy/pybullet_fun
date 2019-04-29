@@ -1,26 +1,32 @@
 <?xml version="1.0" ?>
 <robot name="TeaCup">
   <link name="TeaCupLink">
-    <!--<inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-       <mass value=".0"/>
+    <inertial>
+       <origin rpy="0 0 0" xyz="0.7 0 0"/>
+       <mass value="0.5"/>
        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-    </inertial>-->
+    </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <!--<origin rpy="0 0 0" xyz="0 0 0"/>-->
+      <origin rpy="1.57 0 0" xyz="0 0 -1.35"/>
       <geometry>
-           <mesh filename="TeaCup.obj" scale="0.2 0.2 0.2"/>
+           <mesh filename="TeaCup.obj"/>
       </geometry>
        <!--<material name="white">
         <color rgba="1 1 1 1"/>
       </material>-->
     </visual>
     <collision>
+        <origin rpy="0 0 0" xyz="0.7 0.0 0"/>
       <geometry>
-	 	<box size="0.2 0.2 0.2"/>
+
+	 	<cylinder radius="1.0" length="2.816"></cylinder>
+
 	 	<!-- find out size -->
       </geometry>
-    </collision>
+      <!-- get handle collision -->
+      <!--<geometry><box size="2.80866 2.81665 1.97164"/></geometry>-->
+      </collision>
   </link>
 </robot>
 

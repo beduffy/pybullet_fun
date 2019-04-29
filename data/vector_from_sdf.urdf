@@ -278,7 +278,7 @@
           <mesh filename="wheel_FL.obj" scale="0.01 0.01 0.01"/>
         </geometry>
         <!--<pose frame=''>-0.003 -0.022 -0.014 0 -0 0</pose>-->
-        <origin xyz="-0.003 -0.022 -0.014" rpy="0 -0 0" />
+        <origin xyz="0.003 -0.022 -0.014" rpy="0 -0 0" />
         <transparency>0</transparency>
         <cast_shadows>1</cast_shadows>
         <!--<material>
@@ -360,7 +360,7 @@
           <mesh filename="wheel_FR.obj" scale="0.01 0.01 0.01"/>
         </geometry>
         <!--<pose frame=''>-0.003 0.022 -0.014 0 -0 0</pose>-->
-        <origin xyz="-0.003 0.022 -0.014" rpy="0 -0 0" />
+        <origin xyz="0.003 0.022 -0.014" rpy="0 -0 0" />
         <transparency>0</transparency>
         <cast_shadows>1</cast_shadows>
         <!--<material>

@@ -1,3 +1,4 @@
+import random
 import time
 
 import pybullet as p
@@ -14,19 +15,25 @@ vector_start_position = [0, 0, 2]
 # vector_model = p.loadSDF('model.sdf', globalScaling=10.0)
 vector_model = p.loadURDF('vector_from_sdf.urdf', globalScaling=5.0, basePosition=vector_start_position,
 # vector_model = p.loadURDF('vector.urdf', globalScaling=5.0,
-                          flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+#                           flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL
                                                        )
 
+# for i in range(p.getNumJoints(vector_model)):
+#     print(p.getJointInfo(vector_model, i))
+#
+#     p.changeVisualShape(vector_model, i,          rgbaColor=[random.uniform(0, 1), random.uniform(0, 1),
+#                                                      random.uniform(0, 1), 1])
 
 
 
 # <scale>0.0280866 0.0281665 0.0197164/scale>
 # <scale>.01 .01 .01</scale>
-pos = [0, 0, 2]
+pos = [0, 0, 3]
 quat_orientation = p.getQuaternionFromEuler([1, 0, 0])
 # teacup_model = p.loadSDF('teacup_model.sdf')
-# teacup_model = p.loadSDF('teacup_model_mesh_collision.sdf')
+# teacup_model = p.loadSDF('teacup_model_mesh_collision.sdf', globalScaling=5.0)
 # teacup_model = p.loadURDF('TeaCup.urdf', basePosition=pos, baseOrientation=quat_orientation, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+# teacup_model = p.loadURDF('TeaCup.urdf', basePosition=pos, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
 # teacup_model = p.loadURDF('coffee_cup.urdf', basePosition=pos,
 #                           baseOrientation=quat_orientation, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL,
 #                           globalScaling=0.1)

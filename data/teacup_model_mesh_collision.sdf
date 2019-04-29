@@ -1,14 +1,17 @@
 <?xml version="1.0"?>
 <sdf version="1.5">
     <model name="teacup_model">
-        <pose>0 0.1 0.2 0 0 0</pose>
+        <pose>0 0.1 0.2 0 0 1</pose>
         <static>false</static>
         <link name="body">
             <collision name="collision">
-	             <mesh>
-                    <uri>TeaCup.obj</uri>
-                    <scale>.01 .01 .01</scale>
-                 </mesh>
+                <geometry>
+                     <!--<mesh>
+                        <uri>TeaCup.obj</uri>
+                        <scale>.01 .01 .01</scale>
+                     </mesh>-->
+                     <box><size>0.0280866 0.0281665 0.0197164</size></box>
+                </geometry>
             </collision>
             <inertial>
                 <mass>.8</mass>
@@ -23,6 +26,8 @@
             </inertial>
             <visual name="visual">
                 <geometry>
+                    <!--<box><size>0.0280866 0.0281665 0.0197164</size></box>-->
+
 		            <mesh>
 		                <uri>TeaCup.obj</uri>
 		                <scale>.01 .01 .01</scale>

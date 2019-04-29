@@ -104,9 +104,12 @@ class Racecar:
                                           targetPosition=steeringAngle)
 
 class Vector:
-    def __init__(self, bullet_client, urdfRootPath='', timeStep=0.01):
+    def __init__(self, bullet_client, urdfRootPath='', timeStep=0.01,
+                 vector_start_position=[0, 0, 0], vector_start_orientation=[0, 0, 0]):
         self.urdfRootPath = urdfRootPath
         self.timeStep = timeStep
+        self.vector_start_position = vector_start_position
+        self.vector_start_orientation = vector_start_orientation
 
         self.discrete_actions = True
         self._p = bullet_client
@@ -117,9 +120,16 @@ class Vector:
         #                        [0, 0, .2], useFixedBase=False)
         # car = self._p.loadURDF(os.path.join(self.urdfRootPath, "racecar/racecar_differential.urdf"),
         #                        [0, 0, .2], useFixedBase=False)
-        car = p.loadSDF("model.sdf", globalScaling=3.0)  # , [0,0,2],useFixedBase=True)
+        # car = p.loadSDF("model.sdf", globalScaling=3.0)  # , [0,0,2],useFixedBase=True)
+        car = p.loadURDF('vector_from_sdf.urdf', globalScaling=5.0,
+                         basePosition=self.vector_start_position,
+                         baseOrientation=p.getQuaternionFromEuler(self.vector_start_orientation),
+        # vector_model = p.loadURDF('vector.urdf', globalScaling=5.0,
+        flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+                                     )
+
         # print(car)
-        car = car[0]
+        # car = car[0]
         # print(p.getNumJoints(car))
         self.racecarUniqueId = car
         # for i in range (self._p.getNumJoints(car)):

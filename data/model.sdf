@@ -30,12 +30,12 @@
         <!--<transparency>0</transparency>
         <cast_shadows>1</cast_shadows>-->
         <material>
-            <diffuse>1 0 0 1</diffuse>
+            <!--<diffuse>1 0 0 1</diffuse>-->
           <!--<script><uri>body.mtl</uri></script>-->
 
-          <shader type='pixel'>
+          <!--<shader type='pixel'>
             <normal_map>__default__</normal_map>
-          </shader>
+          </shader>-->
 
         </material>
       </visual>
