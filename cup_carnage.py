@@ -5,9 +5,8 @@ parentdir = os.path.dirname(os.path.dirname(currentdir))
 os.sys.path.insert(0, parentdir)
 
 import math
-import time
-
 import gym
+import time
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
@@ -17,7 +16,6 @@ import random
 import pybullet_utils.bullet_client as bullet_client
 import pybullet_data
 from pkg_resources import parse_version
-import cv2
 
 
 RENDER_HEIGHT = 720
@@ -46,15 +44,12 @@ class VectorBulletEnv(gym.Env):
         self._envStepCounter = 0
         self._renders = renders
         self._isDiscrete = isDiscrete
-        self._cam_dist = 4
-        self._cam_yaw = 0
-        self._cam_pitch = 0
-
         if self._renders:
             self._p = bullet_client.BulletClient(
                 connection_mode=pybullet.GUI)
         else:
             self._p = bullet_client.BulletClient()
+        # self._p = bullet_client.BulletClient()
 
         self.seed()
         # self.reset()
@@ -94,7 +89,7 @@ class VectorBulletEnv(gym.Env):
         ballz = 1
 
         ballx, bally, ballz = [5, 5, 5]
-        # todo add image state feature
+        ballx, bally, ballz = [0.5, 0.5, 2]
 
         quat_orientation = self._p.getQuaternionFromEuler([0, 0, 3.14 / 2])
 
@@ -103,11 +98,10 @@ class VectorBulletEnv(gym.Env):
         # obj_file_name = 'TeaCup.obj'
         obj_file_name = 'TeaCup.urdf'
 
-        self._ballUniqueId = self._p.loadURDF(obj_file_name, basePosition=[ballx, bally, ballz],
-                                              baseOrientation=quat_orientation,
-                                              flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL,
-                                              globalScaling=0.25
-                                              )
+        # self._ballUniqueId = self._p.loadURDF(obj_file_name, basePosition=[ballx, bally, ballz],
+        #                                       baseOrientation=quat_orientation,
+        #                                       flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+        #                                       )
         #
         # ballx, bally, ballz = [-0.5, -0.5, 0.5]
         # obj_file_name = 'coffee_cup.urdf'
@@ -116,12 +110,64 @@ class VectorBulletEnv(gym.Env):
         #                                       flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL
         #                                       )
 
+        range_in_each_dim = 2
+        for i in range(1):
+            ballx, bally, ballz = [random.uniform(-range_in_each_dim, range_in_each_dim),
+                                   random.uniform(-range_in_each_dim, range_in_each_dim),
+                                   random.uniform(0.3, 2.0)]
+            # obj_file_name = random.choice(['coffee_cup.urdf', 'TeaCup.urdf'])
+            obj_file_name = random.choice(['TeaCup.urdf'])
+            # obj_file_name = random.choice(['coffee_cup.urdf'])
+            # _secondCupUniqueId = self._p.loadURDF(obj_file_name,
+            # ballx, bally, ballz = [5.0, 0, 0.2]
+            ballx, bally, ballz = [13.5, -0.1, 0.2]
+            self._ballUniqueId = self._p.loadURDF(obj_file_name,
+                                                       basePosition=[ballx, bally, ballz],
+                                                       baseOrientation=quat_orientation,
+                                                       # rgbaColor=[1, 0, 0, 1],
+                                                       #flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL,
+                                                       globalScaling=0.15
+                                                       )
+            self._p.changeVisualShape(self._ballUniqueId, -1,
+                                      rgbaColor=[random.uniform(0, 1), random.uniform(0, 1),
+                                                 random.uniform(0, 1), 1]
+                                      # rgbaColor=[1, 0, 0, 1]
+                                      # rgbaColor=[random.randint(0, 1), random.randint(0, 1),
+                                      #            random.randint(0, 1), 1]
+                                      )
+
         # todo reset everything properly?
         self._p.setGravity(0, 0, -10)
         # self._racecar = Racecar(self._p, urdfRootPath=self._urdfRoot,
         #                                 timeStep=self._timeStep)
-        self._racecar = Vector(self._p, urdfRootPath=self._urdfRoot,
-                               timeStep=self._timeStep)
+        # self._racecar = Vector(self._p, urdfRootPath=self._urdfRoot,
+        #                        timeStep=self._timeStep)
+
+        num_vectors = 20
+
+        # distance_between = 8
+        distance_between = 6
+        self.battle_center = [0, distance_between / 2, 0]
+
+        self._racecars = [Vector(self._p, urdfRootPath=self._urdfRoot,
+                           timeStep=self._timeStep,
+                                 vector_start_position=[self.battle_center[0] + x, self.battle_center[1] + 0, self.battle_center[2] + 0],
+                                 vector_start_orientation=[0, 0, -3.14 / 2]) for x in range(num_vectors)]
+
+        self._racecars_other_team = [Vector(self._p, urdfRootPath=self._urdfRoot,
+                           timeStep=self._timeStep,
+                                        vector_start_position=[self.battle_center[0] + x, self.battle_center[1] + -distance_between, self.battle_center[2] + 0], vector_start_orientation=[0, 0, 3.14 / 2]) for x in range(num_vectors)]
+
+        self.all_racecars = self._racecars + self._racecars_other_team
+        self._racecar = self._racecars[0]
+
+        for racecar in self._racecars:
+            for i in range(self._p.getNumJoints(racecar.racecarUniqueId)):
+                print(self._p.getJointInfo(racecar.racecarUniqueId, i))
+
+                self._p.changeVisualShape(racecar.racecarUniqueId, i,
+                                    rgbaColor=[random.uniform(0, 1), random.uniform(0, 1),
+                                               random.uniform(0, 1), 1])
 
         self._envStepCounter = 0
         # for i in range(100):  # todo why was this here?
@@ -164,7 +210,41 @@ class VectorBulletEnv(gym.Env):
         else:
             realaction = action
 
-        self._racecar.applyAction(realaction)
+        print(self._envStepCounter)
+        if self._envStepCounter > 100 and self._envStepCounter < 200:
+            realaction = 0
+        else:
+            realaction = -1
+
+        # if self._envStepCounter == 310:
+        if self._envStepCounter == 250:
+            range_in_each_dim = 2
+            for i in range(100):
+                ballx, bally, ballz = [random.uniform(0, 10),
+                                       random.uniform(-range_in_each_dim, range_in_each_dim),
+                                       random.uniform(1.0, 2.0)]
+                # obj_file_name = random.choice(['coffee_cup.urdf', 'TeaCup.urdf'])
+                obj_file_name = random.choice(['TeaCup.urdf'])
+                # obj_file_name = random.choice(['coffee_cup.urdf'])
+                # _secondCupUniqueId = self._p.loadURDF(obj_file_name,
+                self._ballUniqueId = self._p.loadURDF(obj_file_name,
+                                                      basePosition=[ballx, bally, ballz],
+                                                      # baseOrientation=quat_orientation,
+                                                      # rgbaColor=[1, 0, 0, 1],
+                                                      # flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL,
+                                                      globalScaling=0.15
+                                                      )
+                self._p.changeVisualShape(self._ballUniqueId, -1,
+                                          rgbaColor=[random.uniform(0, 1), random.uniform(0, 1),
+                                                     random.uniform(0, 1), 1]
+                                          # rgbaColor=[1, 0, 0, 1]
+                                          # rgbaColor=[random.randint(0, 1), random.randint(0, 1),
+                                          #            random.randint(0, 1), 1]
+                                          )
+
+        # self._racecar.applyAction(realaction)
+        for racecar in self.all_racecars:
+            racecar.applyAction(realaction)
         for i in range(self._actionRepeat):
             self._p.stepSimulation()
             if self._renders:
@@ -225,6 +305,7 @@ class VectorBulletEnv(gym.Env):
 
 
 if __name__ == '__main__':
+
     renders = True
     env = VectorBulletEnv(isDiscrete=True, renders=renders)
 
@@ -240,15 +321,11 @@ if __name__ == '__main__':
             action = env.action_space.sample()
             state, reward, done, info = env.step(action)
 
-            image_state = env.render(mode='rgb_array')
-            cv2.imshow('vector viewpoint', image_state)
-            cv2.waitKey(1)
-
             if i % 100 == 0:
                 time_taken = time.time() - start
                 time_taken_for_1 = time_taken / 100
                 fps = 1 / time_taken_for_1
-                print('Time taken to do 100 steps: {}. For one: {}. fps: {}. Reward: {}'.format(time_taken,
+                print('Time taken to do 100 steps: {}. For one: {}. fps: {}'.format(time_taken,
                                                                            time_taken_for_1,
-                                                                           fps, reward))
+                                                                           fps))
                 start = time.time()

@@ -230,7 +230,7 @@ class Vector:
         right_side_wheels = [4, 6]
         left_side_wheels = [3, 5]
         # todo above into reset
-        maxForce = 5
+        maxForce = 2.5
 
         if self.discrete_actions:
             if motorCommands == 0:
