@@ -36,7 +36,6 @@ class VectorBulletEnv(gym.Env):
                  isEnableSelfCollision=True,
                  isDiscrete=False,
                  renders=False):
-        print("init")
         self._timeStep = 0.01
         self._urdfRoot = urdfRoot
         self._actionRepeat = actionRepeat
@@ -152,7 +151,6 @@ class VectorBulletEnv(gym.Env):
             basePos, orn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
             # self._p.resetDebugVisualizerCamera(1, 30, -40, basePos)
 
-        # import pdb;pdb.set_trace()
         if (self._isDiscrete):
             # fwd = [-1, -1, -1, 0, 0, 0, 1, 1, 1]
             # steerings = [-0.6, 0, 0.6, -0.6, 0, 0.6, -0.6, 0, 0.6]
@@ -184,20 +182,69 @@ class VectorBulletEnv(gym.Env):
         if mode != "rgb_array":
             return np.array([])
         base_pos, orn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
-        view_matrix = self._p.computeViewMatrixFromYawPitchRoll(
-            cameraTargetPosition=base_pos,
-            distance=self._cam_dist,
-            yaw=self._cam_yaw,
-            pitch=self._cam_pitch,
-            roll=0,
-            upAxisIndex=2)
-        proj_matrix = self._p.computeProjectionMatrixFOV(
-            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-            nearVal=0.1, farVal=100.0)
-        (_, _, px, _, _) = self._p.getCameraImage(
-            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
-            projectionMatrix=proj_matrix, renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
-        rgb_array = np.array(px)
+
+        # option 1
+        # view_matrix = self._p.computeViewMatrixFromYawPitchRoll(
+        #     cameraTargetPosition=base_pos,
+        #     distance=self._cam_dist,
+        #     yaw=self._cam_yaw,
+        #     pitch=self._cam_pitch,
+        #     roll=0,
+        #     upAxisIndex=2)
+        # proj_matrix = self._p.computeProjectionMatrixFOV(
+        #     fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+        #     nearVal=0.1, farVal=100.0)
+        # (_, _, px, _, _) = self._p.getCameraImage(
+        #     width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
+        #     projectionMatrix=proj_matrix, renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
+        # rgb_array = np.array(px)
+        # rgb_array = rgb_array[:, :, :3]
+
+
+        # option 2:
+        pixelWidth = 320
+        pixelHeight = 220
+        camDistance = 4
+        camDistance = 0.5
+        upAxisIndex = 2
+        camera_height = 0.9
+
+        base_pos = [base_pos[0], base_pos[1], base_pos[2] + camera_height]
+        cameraUpVector = [0, 0, 1]
+        # target_position = [0, 0, 0]
+        euler_angle_pose = self._p.getEulerFromQuaternion(orn)
+        multiplier = 4.0
+        multiplier = 40.0
+        pitch = euler_angle_pose[0]
+        roll = euler_angle_pose[1]
+        yaw = euler_angle_pose[2]
+
+        front_vector = [math.cos(yaw) * math.cos(pitch),
+                        math.sin(yaw),
+                        math.cos(yaw) * math.sin(pitch)]
+
+        front_vector = (np.array(front_vector) / np.linalg.norm(front_vector)).tolist()
+
+        target_position = [base_pos[0] + multiplier * front_vector[0],
+                           base_pos[1] + multiplier * front_vector[1],
+                           base_pos[2] + multiplier * front_vector[2]]
+        # target_position = [- x_y_z[0] + front_vector[0],
+        #                    - x_y_z[1] + front_vector[1],
+        #                    - x_y_z[2] + front_vector[2]]
+
+        viewMatrix = self._p.computeViewMatrix(base_pos, target_position, cameraUpVector)
+        projectionMatrix = [1.0825318098068237, 0.0, 0.0, 0.0, 0.0, 1.732050895690918, 0.0, 0.0,
+                            0.0,
+                            0.0, -1.0002000331878662, -1.0, 0.0, 0.0, -0.020002000033855438, 0.0]
+
+        (width, height, rgbPixels, depthPixels, segmentationMaskBuffer) = \
+            self._p.getCameraImage(pixelWidth, pixelHeight, viewMatrix=viewMatrix,
+                                   projectionMatrix=projectionMatrix
+                                   )
+        # todo? renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
+
+
+        rgb_array = np.array(rgbPixels)
         rgb_array = rgb_array[:, :, :3]
         return rgb_array
 
@@ -232,10 +279,9 @@ if __name__ == '__main__':
     action_arr = [1] * num_repeat + [0] * num_repeat + [2] * num_repeat + [3] * num_repeat
     for ep in range(5):
         env.reset()
-        time.sleep(6)
         # for action in action_arr:
         start = time.time()
-        for i in range(100000):
+        for i in range(10000):
             # image = env.render()
             action = env.action_space.sample()
             state, reward, done, info = env.step(action)
