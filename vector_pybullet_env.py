@@ -56,15 +56,15 @@ class VectorBulletEnv(gym.Env):
             self._p = bullet_client.BulletClient()
 
         self.seed()
-        # self.reset()
-        observationDim = 2  # len(self.getExtendedObservation())
-        # print("observationDim")
-        # print(observationDim)
+        observationDim = 2  # len(self.getExtendedObservation())  # todo make variable and do right
+        print("observationDim")
+        print(observationDim)
         # observation_high = np.array([np.finfo(np.float32).max] * observationDim)
         observation_high = np.ones(observationDim) * 1000  # np.inf
         if (isDiscrete):
             self.action_space = spaces.Discrete(4)
         else:
+            # todo continuous as well make sure it works
             action_dim = 2
             self._action_bound = 1
             action_high = np.array([self._action_bound] * action_dim)
@@ -92,14 +92,10 @@ class VectorBulletEnv(gym.Env):
         bally = dist * math.cos(ang)
         ballz = 1
 
-        ballx, bally, ballz = [5, 5, 5]
+        ballx, bally, ballz = [5, 5, 5]  # fixed goal # todo add option for fixed or random
         # todo add image state feature
 
         quat_orientation = self._p.getQuaternionFromEuler([0, 0, 3.14 / 2])
-
-        cup_scale = 0.01
-        # obj_file_name = 'coffee_cup.obj'
-        # obj_file_name = 'TeaCup.obj'
         obj_file_name = 'TeaCup.urdf'
 
         self._ballUniqueId = self._p.loadURDF(obj_file_name, basePosition=[ballx, bally, ballz],
@@ -107,13 +103,6 @@ class VectorBulletEnv(gym.Env):
                                               flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL,
                                               globalScaling=0.25
                                               )
-        #
-        # ballx, bally, ballz = [-0.5, -0.5, 0.5]
-        # obj_file_name = 'coffee_cup.urdf'
-        # self._secondCupUniqueId = self._p.loadURDF(obj_file_name, basePosition=[ballx, bally, ballz],
-        #                                       baseOrientation=quat_orientation,
-        #                                       flags=self._p.URDF_USE_MATERIAL_COLORS_FROM_MTL
-        #                                       )
 
         # todo reset everything properly?
         self._p.setGravity(0, 0, -10)
@@ -167,6 +156,11 @@ class VectorBulletEnv(gym.Env):
             self._p.stepSimulation()
             if self._renders:
                 time.sleep(self._timeStep)
+            # todo create many different states:
+            # 1. car x,y and orientation,
+            # 2. camera rgb
+            # 3. camera rgb + depth + segmentation (or variations)
+            # 4. car x, y and orientation and goal location as state?
             self._observation = self.getExtendedObservation()
 
             if self._termination():
@@ -183,37 +177,14 @@ class VectorBulletEnv(gym.Env):
             return np.array([])
         base_pos, orn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
 
-        # option 1
-        # view_matrix = self._p.computeViewMatrixFromYawPitchRoll(
-        #     cameraTargetPosition=base_pos,
-        #     distance=self._cam_dist,
-        #     yaw=self._cam_yaw,
-        #     pitch=self._cam_pitch,
-        #     roll=0,
-        #     upAxisIndex=2)
-        # proj_matrix = self._p.computeProjectionMatrixFOV(
-        #     fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-        #     nearVal=0.1, farVal=100.0)
-        # (_, _, px, _, _) = self._p.getCameraImage(
-        #     width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
-        #     projectionMatrix=proj_matrix, renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
-        # rgb_array = np.array(px)
-        # rgb_array = rgb_array[:, :, :3]
-
-
-        # option 2:
         pixelWidth = 320
         pixelHeight = 220
-        camDistance = 4
-        camDistance = 0.5
-        upAxisIndex = 2
         camera_height = 0.9
 
         base_pos = [base_pos[0], base_pos[1], base_pos[2] + camera_height]
         cameraUpVector = [0, 0, 1]
-        # target_position = [0, 0, 0]
         euler_angle_pose = self._p.getEulerFromQuaternion(orn)
-        multiplier = 4.0
+        multiplier = 4.0  # todo no or yes or better for far away?
         multiplier = 40.0
         pitch = euler_angle_pose[0]
         roll = euler_angle_pose[1]
@@ -228,9 +199,6 @@ class VectorBulletEnv(gym.Env):
         target_position = [base_pos[0] + multiplier * front_vector[0],
                            base_pos[1] + multiplier * front_vector[1],
                            base_pos[2] + multiplier * front_vector[2]]
-        # target_position = [- x_y_z[0] + front_vector[0],
-        #                    - x_y_z[1] + front_vector[1],
-        #                    - x_y_z[2] + front_vector[2]]
 
         viewMatrix = self._p.computeViewMatrix(base_pos, target_position, cameraUpVector)
         projectionMatrix = [1.0825318098068237, 0.0, 0.0, 0.0, 0.0, 1.732050895690918, 0.0, 0.0,
@@ -243,7 +211,6 @@ class VectorBulletEnv(gym.Env):
                                    )
         # todo? renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
 
-
         rgb_array = np.array(rgbPixels)
         rgb_array = rgb_array[:, :, :3]
         return rgb_array
@@ -252,6 +219,7 @@ class VectorBulletEnv(gym.Env):
         return self._envStepCounter > 1000
 
     def _reward(self):
+        # todo add terminal state option
         closestPoints = self._p.getClosestPoints(self._racecar.racecarUniqueId, self._ballUniqueId,
                                                  10000)
 
@@ -272,29 +240,23 @@ class VectorBulletEnv(gym.Env):
 
 
 if __name__ == '__main__':
-    renders = True
-    env = VectorBulletEnv(isDiscrete=True, renders=renders)
+    env = VectorBulletEnv(isDiscrete=True, renders=True)
 
-    num_repeat = 200
-    action_arr = [1] * num_repeat + [0] * num_repeat + [2] * num_repeat + [3] * num_repeat
     for ep in range(5):
         env.reset()
-        # for action in action_arr:
         start = time.time()
         for i in range(10000):
-            # image = env.render()
             action = env.action_space.sample()
             state, reward, done, info = env.step(action)
 
-            image_state = env.render(mode='rgb_array')
-            cv2.imshow('vector viewpoint', image_state)
+            image_state = env.render(mode='rgb_array')  # todo should be state and render within
+            cv2.imshow('vector viewpoint', image_state)  # todo not needed but look at one mor etime
             cv2.waitKey(1)
 
             if i % 100 == 0:
                 time_taken = time.time() - start
                 time_taken_for_1 = time_taken / 100
                 fps = 1 / time_taken_for_1
-                print('Time taken to do 100 steps: {}. For one: {}. fps: {}. Reward: {}'.format(time_taken,
-                                                                           time_taken_for_1,
+                print('Time taken to do 100 steps: {}. fps: {}. Reward: {}'.format(time_taken,
                                                                            fps, reward))
                 start = time.time()
