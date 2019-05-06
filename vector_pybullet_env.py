@@ -35,7 +35,10 @@ class VectorBulletEnv(gym.Env):
                  actionRepeat=1,
                  isEnableSelfCollision=True,
                  isDiscrete=False,
-                 renders=False):
+                 renders=False,
+                 point_goal=True,
+                 rgb_camera_state=False,
+                 depth_camera_state=False):
         self._timeStep = 0.01
         self._urdfRoot = urdfRoot
         self._actionRepeat = actionRepeat
@@ -44,6 +47,9 @@ class VectorBulletEnv(gym.Env):
         self._ballUniqueId = -1
         self._envStepCounter = 0
         self._renders = renders
+        self._point_goal=point_goal
+        self._depth_camera_state = depth_camera_state
+        self._rgb_camera_state = rgb_camera_state
         self._isDiscrete = isDiscrete
         self._cam_dist = 4
         self._cam_yaw = 0
@@ -112,10 +118,11 @@ class VectorBulletEnv(gym.Env):
                                timeStep=self._timeStep)
 
         self._envStepCounter = 0
-        # for i in range(100):  # todo why was this here?
+        # for i in range(100):  # todo why was this here? to begin things along?
         #     self._p.stepSimulation()
         self._observation = self.getExtendedObservation()
-        return np.array(self._observation)
+        # return np.array(self._observation)
+        return self._observation  # todo dict? or keep as list?
 
     def __del__(self):
         self._p = 0
@@ -125,14 +132,19 @@ class VectorBulletEnv(gym.Env):
         return [seed]
 
     def getExtendedObservation(self):
-        self._observation = []  # self._racecar.getObservation()
-        carpos, carorn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
-        ballpos, ballorn = self._p.getBasePositionAndOrientation(self._ballUniqueId)
-        invCarPos, invCarOrn = self._p.invertTransform(carpos, carorn)
-        ballPosInCar, ballOrnInCar = self._p.multiplyTransforms(invCarPos, invCarOrn, ballpos,
-                                                                ballorn)
+        self._observation = []  # self._racecar.getObservation()  # todo look at commented function
 
-        self._observation.extend([ballPosInCar[0], ballPosInCar[1]])
+        if self._rgb_camera_state:
+            self._observation.append(self.render(depth=self._depth_camera_state))
+        if self._point_goal:
+            carpos, carorn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
+            ballpos, ballorn = self._p.getBasePositionAndOrientation(self._ballUniqueId)
+            invCarPos, invCarOrn = self._p.invertTransform(carpos, carorn)  # todo work out what tihs is
+            ballPosInCar, ballOrnInCar = self._p.multiplyTransforms(invCarPos, invCarOrn, ballpos,
+                                                                    ballorn)
+
+            self._observation.append([ballPosInCar[0], ballPosInCar[1]])
+
         return self._observation
 
     def step(self, action):
@@ -170,10 +182,11 @@ class VectorBulletEnv(gym.Env):
         done = self._termination()
         # print("len=%r" % len(self._observation))
 
-        return np.array(self._observation), reward, done, {}
+        # return np.array(self._observation), reward, done, {}
+        return self._observation, reward, done, {}  # todo observation as list, dict or array?
 
-    def render(self, mode='human', close=False):
-        if mode != "rgb_array":
+    def render(self, mode='rgb_array', close=False, depth=False):
+        if mode != "rgb_array":  # 'human' don't return but human can see
             return np.array([])
         base_pos, orn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
 
@@ -213,7 +226,12 @@ class VectorBulletEnv(gym.Env):
 
         rgb_array = np.array(rgbPixels)
         rgb_array = rgb_array[:, :, :3]
-        return rgb_array
+        if depth:
+            return_array = np.concatenate([rgb_array, np.expand_dims(depthPixels, axis=2)],
+                                          axis=2)
+        else:
+            return_array = rgb_array
+        return return_array
 
     def _termination(self):
         return self._envStepCounter > 1000
@@ -240,7 +258,8 @@ class VectorBulletEnv(gym.Env):
 
 
 if __name__ == '__main__':
-    env = VectorBulletEnv(isDiscrete=True, renders=True)
+    env = VectorBulletEnv(isDiscrete=True, renders=True, point_goal=True, rgb_camera_state=True,
+                          depth_camera_state=True)
 
     for ep in range(5):
         env.reset()
@@ -249,9 +268,10 @@ if __name__ == '__main__':
             action = env.action_space.sample()
             state, reward, done, info = env.step(action)
 
-            image_state = env.render(mode='rgb_array')  # todo should be state and render within
-            cv2.imshow('vector viewpoint', image_state)  # todo not needed but look at one mor etime
-            cv2.waitKey(1)
+            # image_state = env.render(mode='rgb_array')  # todo should be state and render within
+            # rgb_state = cv2.cvtColor(image_state, cv2.COLOR_BGR2RGB)
+            # cv2.imshow('vector viewpoint', rgb_state)  # todo not needed but look at one mor etime
+            # cv2.waitKey(1)
 
             if i % 100 == 0:
                 time_taken = time.time() - start
