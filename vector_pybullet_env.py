@@ -1,9 +1,4 @@
-import os, inspect
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(os.path.dirname(currentdir))
-os.sys.path.insert(0, parentdir)
-
+import os
 import math
 import time
 
@@ -18,10 +13,6 @@ import pybullet_utils.bullet_client as bullet_client
 import pybullet_data
 from pkg_resources import parse_version
 import cv2
-
-
-RENDER_HEIGHT = 720
-RENDER_WIDTH = 960
 
 
 class VectorBulletEnv(gym.Env):
@@ -64,7 +55,7 @@ class VectorBulletEnv(gym.Env):
         self.seed()
         observationDim = 2  # len(self.getExtendedObservation())  # todo make variable and do right
         print("observationDim")
-        print(observationDim)
+        print(observationDim)  # todo change but now it's a dict/list
         # observation_high = np.array([np.finfo(np.float32).max] * observationDim)
         observation_high = np.ones(observationDim) * 1000  # np.inf
         if (isDiscrete):
@@ -131,22 +122,6 @@ class VectorBulletEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def getExtendedObservation(self):
-        self._observation = []  # self._racecar.getObservation()  # todo look at commented function
-
-        if self._rgb_camera_state:
-            self._observation.append(self.render(depth=self._depth_camera_state))
-        if self._point_goal:
-            carpos, carorn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
-            ballpos, ballorn = self._p.getBasePositionAndOrientation(self._ballUniqueId)
-            invCarPos, invCarOrn = self._p.invertTransform(carpos, carorn)  # todo work out what tihs is
-            ballPosInCar, ballOrnInCar = self._p.multiplyTransforms(invCarPos, invCarOrn, ballpos,
-                                                                    ballorn)
-
-            self._observation.append([ballPosInCar[0], ballPosInCar[1]])
-
-        return self._observation
-
     def step(self, action):
         if (self._renders):
             basePos, orn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
@@ -185,6 +160,25 @@ class VectorBulletEnv(gym.Env):
         # return np.array(self._observation), reward, done, {}
         return self._observation, reward, done, {}  # todo observation as list, dict or array?
 
+    def getExtendedObservation(self):
+        self._observation = []  # self._racecar.getObservation()  # todo look at commented function
+
+        if self._rgb_camera_state:
+            self._observation.append(self.render(depth=self._depth_camera_state))
+        if self._point_goal:
+            carpos, carorn = self._p.getBasePositionAndOrientation(self._racecar.racecarUniqueId)
+            ballpos, ballorn = self._p.getBasePositionAndOrientation(self._ballUniqueId)
+            invCarPos, invCarOrn = self._p.invertTransform(carpos, carorn)  # todo work out what tihs is
+            ballPosInCar, ballOrnInCar = self._p.multiplyTransforms(invCarPos, invCarOrn, ballpos,
+                                                                    ballorn)
+
+            self._observation.append([ballPosInCar[0], ballPosInCar[1]])
+
+        if len(self._observation) == 1:  # if only item in list, just create regular numpy array
+            self._observation = np.array(self._observation[0])
+
+        return self._observation
+
     def render(self, mode='rgb_array', close=False, depth=False):
         if mode != "rgb_array":  # 'human' don't return but human can see
             return np.array([])
@@ -197,8 +191,8 @@ class VectorBulletEnv(gym.Env):
         base_pos = [base_pos[0], base_pos[1], base_pos[2] + camera_height]
         cameraUpVector = [0, 0, 1]
         euler_angle_pose = self._p.getEulerFromQuaternion(orn)
-        multiplier = 4.0  # todo no or yes or better for far away?
-        multiplier = 40.0
+        multiplier = 4.0
+        multiplier = 40.0  # todo no or yes or better for far away?
         pitch = euler_angle_pose[0]
         roll = euler_angle_pose[1]
         yaw = euler_angle_pose[2]
@@ -267,11 +261,6 @@ if __name__ == '__main__':
         for i in range(10000):
             action = env.action_space.sample()
             state, reward, done, info = env.step(action)
-
-            # image_state = env.render(mode='rgb_array')  # todo should be state and render within
-            # rgb_state = cv2.cvtColor(image_state, cv2.COLOR_BGR2RGB)
-            # cv2.imshow('vector viewpoint', rgb_state)  # todo not needed but look at one mor etime
-            # cv2.waitKey(1)
 
             if i % 100 == 0:
                 time_taken = time.time() - start
