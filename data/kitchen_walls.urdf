@@ -1,0 +1,214 @@
+<?xml version="1.0" ?>
+<robot name="walls">
+  <link name="left_wall">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <origin rpy="0 0 0" xyz="0.0 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 10 1.5"/>
+          </geometry>
+          <material name="brown">
+            <color rgba="0.87 0.72 0.52 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 0" xyz="0.0 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 10 1.5"/>
+          </geometry>
+        </collision>
+  </link>
+  <link name="bottom_wall">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <origin rpy="0 0 1.57" xyz="2.15 -0.5 0.75"/>
+          <geometry>
+            <box size="0.15 4.5 1.5"/>
+          </geometry>
+          <material name="brown">
+            <color rgba="0.87 0.72 0.52 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 1.57" xyz="2.15 -0.5 0.75"/>
+          <geometry>
+            <box size="0.15 4.5 1.5"/>
+          </geometry>
+        </collision>
+  </link>
+  <link name="right_wall">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <origin rpy="0 0 0" xyz="4.3 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 10 1.5"/>
+          </geometry>
+          <material name="brown">
+            <color rgba="0.87 0.72 0.52 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 0" xyz="4.3 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 10 1.5"/>
+          </geometry>
+        </collision>
+  </link>
+
+  <link name="wall_between_kitchen_and_living_room_1">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <origin rpy="0 0 1.57" xyz="0.75 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 1.5 1.5"/>
+          </geometry>
+          <material name="brown">
+            <color rgba="0.87 0.72 0.52 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 1.57" xyz="0.75 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 1.5 1.5"/>
+          </geometry>
+        </collision>
+  </link>
+  <link name="wall_between_kitchen_and_living_room_2">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <origin rpy="0 0 1.57" xyz="3.65 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 1.28 1.5"/>
+          </geometry>
+          <material name="brown">
+            <color rgba="0.87 0.72 0.52 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 1.57" xyz="3.65 4.5 0.75"/>
+          <geometry>
+            <box size="0.15 1.28 1.5"/>
+          </geometry>
+        </collision>
+  </link>
+  <link name="door_between_kitchen_and_living_room">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="1"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <!--<origin rpy="0 0 1.57" xyz="2.25 4.5 0.75"/>-->
+          <origin rpy="0 0 1.57" xyz="0.75 0 0"/>
+          <geometry>
+            <box size="0.15 1.433 1.5"/>
+          </geometry>
+          <material name="red">
+            <color rgba="0.87 0 0 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 1.57" xyz="0.75 0 0"/>
+          <geometry>
+            <box size="0.15 1.433 1.5"/>
+          </geometry>
+        </collision>
+  </link>
+  <link name="top_wall">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <origin rpy="0 0 1.57" xyz="2.15 9.5 0.75"/>
+          <geometry>
+            <box size="0.15 4.5 1.5"/>
+          </geometry>
+          <material name="brown">
+            <color rgba="0.87 0.72 0.52 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 1.57" xyz="2.15 9.5 0.75"/>
+          <geometry>
+            <box size="0.15 4.5 1.5"/>
+          </geometry>
+        </collision>
+  </link>
+
+
+
+  <joint name="left_to_bottom" type="fixed">
+    <parent link="left_wall"/>
+    <child link="bottom_wall"/>
+  </joint>
+  <joint name="bottom_to_right" type="fixed">
+    <parent link="bottom_wall"/>
+    <child link="right_wall"/>
+  </joint>
+  <joint name="right_to_top" type="fixed">
+    <parent link="right_wall"/>
+    <child link="top_wall"/>
+  </joint>
+  <joint name="wall_between_kitchen_and_living_room_1_to_left" type="fixed">
+    <parent link="left_wall"/>
+    <child link="wall_between_kitchen_and_living_room_1"/>
+  </joint>
+  <joint name="wall_between_kitchen_and_living_room_2_to_left" type="fixed">
+    <parent link="right_wall"/>
+    <child link="wall_between_kitchen_and_living_room_2"/>
+  </joint>
+  <joint name="door_to_wall_joint" type="revolute">
+    <parent link="wall_between_kitchen_and_living_room_1"/>
+    <child link="door_between_kitchen_and_living_room"/>
+
+    <origin xyz="1.5 4.5 0.75"/>
+    <!-- 2.25 for x? 2.25 4.5 0.75-->
+    <axis xyz="0 0 1"></axis>
+    <limit effort="30" velocity="1.0" lower="-2.79253" upper="2.79253" />
+  </joint>
+
+</robot>
+

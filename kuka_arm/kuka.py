@@ -28,6 +28,9 @@ class Kuka:
         self.useOrientation = 1
         self.kukaEndEffectorIndex = 6
         self.kukaGripperIndex = 7
+
+        self.kukaEndEffectorIndex = 6 + 1
+        self.kukaGripperIndex = 7 + 1  # added
         # lower limits for null space
         self.ll = [-.967, -2, -2.96, 0.19, -2.96, -2.09, -3.05]
         # upper limits for null space
@@ -38,7 +41,7 @@ class Kuka:
         self.rp = [0, 0, 0, 0.5 * math.pi, 0, -math.pi * 0.5 * 0.66, 0]
         # joint damping coefficents
         self.jd = [0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001,
-                   0.00001, 0.00001, 0.00001, 0.00001, 0.00001]
+                   0.00001, 0.00001, 0.00001, 0.00001, 0.00001] + [0.00001, 0.00001, 0.00001]
         self.reset()
 
     def reset(self):
@@ -47,11 +50,11 @@ class Kuka:
         self.kukaUid = objects[0]
         # for i in range (p.getNumJoints(self.kukaUid)):
         #  print(p.getJointInfo(self.kukaUid,i))
-        p.resetBasePositionAndOrientation(self.kukaUid, [-0.100000, 0.000000, 0.070000],
+        p.resetBasePositionAndOrientation(self.kukaUid, [-0.100000, 0.000000, 0.010000],
                                           [0.000000, 0.000000, 0.000000, 1.000000])
-        self.jointPositions = [0.006418, 0.413184, -0.011401, -1.589317, 0.005379, 1.137684,
+        self.jointPositions = [0.0, 0.006418, 0.413184, -0.011401, -1.589317, 0.005379, 1.137684,
                                -0.006539, 0.000048, -0.299912, 0.000000, -0.000043, 0.299960,
-                               0.000000, -0.000200, 0.0, 0.0, 0.0]  # added final 2-4
+                               0.000000, -0.000200, 0.0, 0.0]  # added final 2-4
         self.numJoints = p.getNumJoints(self.kukaUid)
         for jointIndex in range(self.numJoints):
             p.resetJointState(self.kukaUid, jointIndex, self.jointPositions[jointIndex])
@@ -193,13 +196,15 @@ class Kuka:
                 p.setJointMotorControl2(self.kukaUid, motor, p.POSITION_CONTROL,
                                         targetPosition=motorCommands[action], force=self.maxForce)
 
-        targetVelocity = 8
+        targetVelocity = 4
         maxForce = 2.5
-        maxForce = 25
+        # maxForce = 0
+        # targetVelocity = 0
+        # maxForce = 25
         all_wheels = [20, 21]
         all_wheels = [15, 16]
-        import pdb;
-        pdb.set_trace()
+        # import pdb;
+        # pdb.set_trace()
         for wheel in all_wheels:
             p.setJointMotorControl2(self.kukaUid, wheel, p.VELOCITY_CONTROL,
                                     targetVelocity=targetVelocity,

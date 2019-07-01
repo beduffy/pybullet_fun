@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" ?>
 <!--This file contains the SDF model of a KUKA iiwa robot with a wsg50 gripper.
     It has been produced from the varients in //third_party/robotics/models.
     Note:  This file is temporary, and should be deleted once Bullet supports
@@ -10,12 +10,11 @@
 <sdf version='1.6'>
   <world name='default'>
   <model name='lbr_iiwa_with_wsg50'>
-
     <link name='lbr_iiwa_link_0'>
       <pose frame=''>0 0 0 0 -0 0</pose>
       <inertial>
         <pose frame=''>-0.1 0 0.07 0 -0 0</pose>
-        <mass>5</mass>
+        <mass>0</mass>
         <inertia>
           <ixx>0.05</ixx>
           <ixy>0</ixy>
@@ -50,99 +49,6 @@
         </material>
       </visual>
     </link>
-
-    <link name='body'>
-        <inertial>
-            <pose frame=''>0 0 0 0 -0 0</pose>
-            <mass>25</mass>
-            <inertia>
-              <ixx>0.05</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>0.06</iyy>
-              <iyz>0</iyz>
-              <izz>0.03</izz>
-            </inertia>
-      </inertial>
-        <collision name='body_collision'>
-            <pose frame=''>0 0 0 0 -0 0</pose>
-            <geometry>
-              <box><size>0.4 0.7 0.4</size></box>
-            </geometry>
-          </collision>
-          <visual name='body_visual'>
-            <pose frame=''>0 0 0 0 -0 0</pose>
-            <geometry>
-              <box><size>0.4 0.7 0.4</size></box>
-            </geometry>
-            <material>
-              <ambient>1 0 0 1</ambient>
-              <diffuse>0.2 0.2 0.2 1.0</diffuse>
-              <specular>0.4 0.4 0.4 1</specular>
-              <emissive>0 0 0 0</emissive>
-            </material>
-          </visual>
-    </link>
-    <link name='right_wheel'>
-        <inertial>
-            <pose frame=''>0 0 0 0 -0 0</pose>
-            <mass>1</mass>
-            <inertia>
-              <ixx>0.05</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>0.06</iyy>
-              <iyz>0</iyz>
-              <izz>0.03</izz>
-            </inertia>
-        </inertial>
-        <collision name='right_wheel_collision'>
-            <pose frame=''>0.25 0 0 0 -1.57 0</pose>
-            <geometry>
-              <cylinder><length>0.1</length>
-    <radius>0.3</radius></cylinder>
-            </geometry>
-        </collision>
-          <visual name='right_wheel_visual'>
-            <pose frame=''>0.25 0 0 0 -1.57 0</pose>
-            <geometry>
-              <cylinder><length>0.1</length>
-    <radius>0.3</radius></cylinder>
-            </geometry>
-          </visual>
-    </link>
-    <link name='left_wheel'>
-        <inertial>
-            <pose frame=''>0 0 0 0 -0 0</pose>
-            <mass>1</mass>
-            <inertia>
-              <ixx>0.05</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>0.06</iyy>
-              <iyz>0</iyz>
-              <izz>0.03</izz>
-            </inertia>
-        </inertial>
-        <collision name='left_wheel_collision'>
-            <pose frame=''>-0.25 0 0 0 -1.57 0</pose>
-            <geometry>
-              <cylinder><length>0.1</length>
-    <radius>0.3</radius></cylinder>
-            </geometry>
-        </collision>
-          <visual name='left_wheel_visual'>
-            <pose frame=''>-0.25 0 0 0 -1.57 0</pose>
-            <geometry>
-              <cylinder><length>0.1</length>
-            <radius>0.3</radius></cylinder>
-            </geometry>
-          </visual>
-    </link>
-
-
-
-
     <link name='lbr_iiwa_link_1'>
       <pose frame=''>0 0 0.1575 0 -0 0</pose>
       <inertial>
@@ -182,9 +88,6 @@
         </material>
       </visual>
     </link>
-
-
-
     <joint name='J0' type='revolute'>
       <child>lbr_iiwa_link_1</child>
       <parent>lbr_iiwa_link_0</parent>
@@ -498,7 +401,7 @@
       <pose frame=''>0 0 1.261 0 0 0</pose>
       <inertial>
         <pose frame=''>0 0 0.02 0 -0 0</pose>
-        <mass>1.3</mass>
+        <mass>0.3</mass>
         <inertia>
           <ixx>0.001</ixx>
           <ixy>0</ixy>
@@ -554,21 +457,15 @@
     </joint>
 
     <!-- Attach the base of the gripper to the end of the arm -->
-    <joint name='gripper_to_arm' type='continuous'>
+    <joint name='gripper_to_arm' type='fixed'>
       <parent>lbr_iiwa_link_7</parent>
       <child>base_link</child>
-      <axis>
-        <xyz>0 0 1</xyz>
-      </axis>
     </joint>
-
-    
-    
     <link name='base_link'>
       <pose frame=''>0 0 1.305 0 -0 0</pose>
       <inertial>
         <pose frame=''>0 0 0 0 -0 0</pose>
-        <mass>0.2</mass>
+        <mass>1.2</mass>
         <inertia>
           <ixx>1</ixx>
           <ixy>0</ixy>
@@ -592,20 +489,6 @@
           <emissive>0 0 0 0</emissive>
         </material>
       </visual>
-        <collision name='base_link_collision'>
-        <pose frame=''>0 0 0 0 0 0</pose>
-        <geometry>
-		  <box>
-		     <size>0.05 0.05 0.1 </size>
-		  </box>
-        </geometry>
-        <material>
-          <ambient>1 0 0 1</ambient>
-          <diffuse>0.6 0.6 0.6 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <emissive>0 0 0 0</emissive>
-        </material>
-      </collision>
     </link>
 
     <joint name='base_left_finger_joint' type='revolute'>
@@ -631,7 +514,7 @@
       <pose frame=''>0 0.024 1.35 0 -0.05 0</pose>
       <inertial>
         <pose frame=''>0 0 0.04 0 0 0</pose>
-        <mass>0.2</mass>
+        <mass>0.1</mass>
         <inertia>
           <ixx>0.1</ixx>
           <ixy>0</ixy>
@@ -655,25 +538,12 @@
           <emissive>0 0 0 0</emissive>
         </material>
       </visual>
-       <collision name='left_finger_collision'>
-        <pose frame=''>0 0 0.04 0 0 0</pose>
-        <geometry>
-          <box>
-            <size>0.01 0.01 0.08</size>
-          </box>
-        </geometry>
-        
-      </collision>
     </link>
     <joint name='left_finger_base_joint' type='fixed'>
       <parent>left_finger</parent>
       <child>left_finger_base</child>
     </joint>
     <link name='left_finger_base'>
-    <contact>
-        <lateral_friction>0.8</lateral_friction>
-        <spinning_friction>.1</spinning_friction>
-      </contact>
       <pose frame=''>-0.005 0.024 1.43 0 -0.3 0</pose>
       <inertial>
         <pose frame=''>-0.003 0 0.04 0 0 0 </pose>
@@ -734,7 +604,7 @@
     <link name='left_finger_tip'>
       <contact>
         <lateral_friction>0.8</lateral_friction>
-        <spinning_friction>.1</spinning_friction>
+        <spinning_friction>1.0</spinning_friction>
       </contact>
       <pose frame=''>-0.02 0.024 1.49 0 0.2 0</pose>
       <inertial>
@@ -794,14 +664,10 @@
       </axis>
     </joint>
     <link name='right_finger'>
-    <contact>
-        <lateral_friction>0.8</lateral_friction>
-        <spinning_friction>.1</spinning_friction>
-      </contact>
       <pose frame=''>0 0.024 1.35 0 0.05 0</pose>
       <inertial>
         <pose frame=''>0 0 0.04 0 0 0</pose>
-        <mass>0.2</mass>
+        <mass>0.1</mass>
         <inertia>
           <ixx>0.1</ixx>
           <ixy>0</ixy>
@@ -825,30 +691,12 @@
           <emissive>0 0 0 0</emissive>
         </material>
       </visual>
-      <collision name='right_finger_collision'>
-        <pose frame=''>0 0 0.04 0 0 0</pose>
-        <geometry>
-          <box>
-            <size>0.01 0.01 0.08</size>
-          </box>
-        </geometry>
-        <material>
-          <ambient>1 0 0 1</ambient>
-          <diffuse>0.6 0.6 0.6 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <emissive>0 0 0 0</emissive>
-        </material>
-      </collision>
     </link>
     <joint name='right_finger_base_joint' type='fixed'>
       <parent>right_finger</parent>
       <child>right_finger_base</child>
     </joint>
     <link name='right_finger_base'>
-    <contact>
-        <lateral_friction>0.8</lateral_friction>
-        <spinning_friction>.1</spinning_friction>
-      </contact>
       <pose frame=''>0.005 0.024 1.43 0 0.3 0</pose>
       <inertial>
         <pose frame=''>0.003 0 0.04 0 0 0 </pose>
@@ -909,7 +757,7 @@
     <link name='right_finger_tip'>
       <contact>
         <lateral_friction>0.8</lateral_friction>
-        <spinning_friction>.1</spinning_friction>
+        <spinning_friction>1.0</spinning_friction>
       </contact>
       <pose frame=''>0.02 0.024 1.49 0 -0.2 0</pose>
       <inertial>
@@ -949,77 +797,6 @@
         </geometry>
       </collision>
     </link>
-
-
-
-
-
-    <joint name='JBody_to_robot_arm_base' type='revolute'>
-      <child>lbr_iiwa_link_0</child>
-      <parent>body</parent>
-      <axis>
-        <xyz>0 0 1</xyz>
-        <limit>
-          <!--<lower>-2.96706</lower>
-          <upper>2.96706</upper>-->
-          <lower>-0.0001</lower>
-          <upper>0.0001</upper>
-          <effort>300</effort>
-          <velocity>10</velocity>
-        </limit>
-        <dynamics>
-          <damping>0.5</damping>
-          <friction>0</friction>
-          <spring_reference>0</spring_reference>
-          <spring_stiffness>0</spring_stiffness>
-        </dynamics>
-      </axis>
-    </joint>
-
-    <joint name='JRight_wheel_to_body' type='revolute'>
-      <child>right_wheel</child>
-      <parent>body</parent>
-      <pose>0.25 0 0 0 -1.57 0</pose>
-      <axis>
-        <xyz>0 0 1</xyz>
-        <limit>
-          <lower>-2.96706</lower>
-          <upper>2.96706</upper>
-          <effort>300</effort>
-          <velocity>10</velocity>
-        </limit>
-        <dynamics>
-          <damping>0.5</damping>
-          <friction>0</friction>
-          <spring_reference>0</spring_reference>
-          <spring_stiffness>0</spring_stiffness>
-        </dynamics>
-      </axis>
-    </joint>
-
-    <joint name='JLeft_wheel_to_body' type='revolute'>
-      <child>left_wheel</child>
-      <parent>body</parent>
-      <pose>-0.25 0 0 0 -1.57 0</pose>
-      <axis>
-        <xyz>0 0 1</xyz>
-        <limit>
-          <lower>-2.96706</lower>
-          <upper>2.96706</upper>
-          <effort>300</effort>
-          <velocity>10</velocity>
-        </limit>
-        <dynamics>
-          <damping>0.5</damping>
-          <friction>0</friction>
-          <spring_reference>0</spring_reference>
-          <spring_stiffness>0</spring_stiffness>
-        </dynamics>
-      </axis>
-    </joint>
-
-
-
   </model>
 </world>
 </sdf>

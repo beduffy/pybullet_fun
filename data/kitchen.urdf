@@ -4469,6 +4469,9 @@
       </geometry>
     </visual>
   </link>
+  <gazebo>
+    <static>true</static>
+  </gazebo>
   <!-- The real measured values -->
   <!--<shopping_block block_pos="6.750 1.085 0" block_rpy="0 0 3.141"/>-->
   <!-- The visually tunned values -->
