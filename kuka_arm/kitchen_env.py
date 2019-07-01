@@ -11,7 +11,16 @@ p.resetSimulation()
 p.setGravity(0, 0, -9.8)
 p.loadURDF("plane.urdf")
 
-walls = p.loadURDF("kitchen_walls.urdf")
+# walls = p.loadURDF("kitchen_walls.urdf")
+quat_orientation = p.getQuaternionFromEuler([0, 0, 3.14 / 2])
+# sofa = p.loadURDF("sofa.urdf", basePosition=[0.5, 7, 1], baseOrientation=quat_orientation)
+# table = p.loadURDF("table.urdf", basePosition=[1.5, 7, 1], baseOrientation=quat_orientation)
+# table = p.loadURDF("trashcan.urdf", basePosition=[3, 8.5, 1], baseOrientation=quat_orientation)
+# bed = p.loadURDF("bed.urdf", basePosition=[0.55, 9, 1], baseOrientation=quat_orientation)
+# bed = p.loadURDF("nordic_floor_lamp_obj.urdf", basePosition=[1.5, 9, 0.0], globalScaling=0.01,
+bed = p.loadURDF("nordic_floor_lamp_obj.urdf", basePosition=[0.5, 0, 1.0], globalScaling=0.01,
+                 baseOrientation=quat_orientation)
+
 
 # kitchen = p.loadURDF("kitchen.urdf", basePosition=[0.2, 0.2, 0])
 # kitchen = p.loadURDF("kitchen.urdf")
