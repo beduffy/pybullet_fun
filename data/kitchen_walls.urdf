@@ -25,6 +25,31 @@
           </geometry>
         </collision>
   </link>
+  <link name="floor">
+      <contact>
+          <lateral_friction value="1"/>
+      </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0"/>
+           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+        </inertial>
+        <visual>
+          <origin rpy="0 0 0" xyz="2.25 4.5 0"/>
+          <geometry>
+            <box size="4.4 10 0.2"/>
+          </geometry>
+          <material name="brown">
+            <color rgba="0.87 0.72 0.52 1"/>
+          </material>
+        </visual>
+        <collision>
+          <origin rpy="0 0 0" xyz="2.25 4.5 0"/>
+          <geometry>
+            <box size="4.4 10 0.2"/>
+          </geometry>
+        </collision>
+  </link>
   <link name="bottom_wall">
       <contact>
           <lateral_friction value="1"/>
@@ -208,6 +233,10 @@
     <!-- 2.25 for x? 2.25 4.5 0.75-->
     <axis xyz="0 0 1"></axis>
     <limit effort="30" velocity="1.0" lower="-2.79253" upper="2.79253" />
+  </joint>
+  <joint name="left_to_floor" type="fixed">
+    <parent link="floor"/>
+    <child link="left_wall"/>
   </joint>
 
 </robot>

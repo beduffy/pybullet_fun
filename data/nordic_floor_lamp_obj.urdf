@@ -5,12 +5,12 @@
               <inertia ixx="1.00056666667" ixy="0" ixz="0" iyy="1.10708333333" iyz="0" izz="0.106816666667"/>
             </inertial>
            <visual>
-               <origin rpy="1.57 0 0" xyz="0 0 -10" />
+               <origin rpy="1.57 0 0" xyz="0 0 -100.0" />
                <geometry>
                    <mesh filename="nordic_floor_lamp_obj.obj" />
                </geometry>
                <material name="brown">
-                 <color rgba="0.87 0.72 0.52 1"/>
+                 <color rgba="0.3 0.5 0.6 1"/>
                </material>
            </visual>
            <collision>
