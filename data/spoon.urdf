@@ -1,0 +1,25 @@
+<robot name="spoon">
+  <link name="spoon">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 -0.075"/>
+      <!-- inertia correct!!! -->
+      <inertial>
+       <origin rpy="0 0 0" xyz="0.0 0 0"/>
+       <mass value="0.5"/>
+       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+      <geometry>
+        <mesh filename="spoon.dae.obj"/>
+        <!--<mesh filename="spoon.dae"/>-->
+      </geometry>
+      <material name="c">
+        <color rgba="0.5 0.5 0.5 1.0" />
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.0025" length="0.2"></cylinder>
+      </geometry>
+    </collision>
+  </link>
+</robot>

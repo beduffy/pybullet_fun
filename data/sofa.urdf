@@ -10,7 +10,7 @@
                    <mesh filename="singleChair.obj" />
                </geometry>
                <material name="brown">
-                 <color rgba="0.87 0.72 0.52 1"/>
+                 <color rgba="0.5 0.5 0.52 1"/>
                </material>
            </visual>
           <collision>
