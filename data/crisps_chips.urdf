@@ -1,0 +1,25 @@
+<robot name="crisps_chips">
+  <link name="crisps_chips">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <!-- inertia correct!!! -->
+      <inertial>
+       <origin rpy="0 0 0" xyz="0.0 0 0"/>
+       <mass value="0.5"/>
+       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+      <geometry>
+        <mesh filename="10874_Chips_v1_L3.obj"/>
+      </geometry>
+      <!--<material name="c">
+        <color rgba="1.0 1.0 0.0 1.0" />
+      </material>-->
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="10874_Chips_v1_L3.obj"/>
+        <!--<cylinder radius="0.0015" length="0.1"></cylinder>-->
+      </geometry>
+    </collision>
+  </link>
+</robot>

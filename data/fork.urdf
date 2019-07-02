@@ -1,7 +1,7 @@
 <robot name="fork">
   <link name="fork">
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 -0.075"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <!-- inertia correct!!! -->
       <inertial>
        <origin rpy="0 0 0" xyz="0.0 0 0"/>
@@ -9,7 +9,7 @@
        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
     </inertial>
       <geometry>
-        <mesh filename="fork.stl"/>  <!-- fix, still doesn't show even if  scale="10 10 10" -->
+        <mesh filename="fork.stl"/>
       </geometry>
       <material name="c">
         <color rgba="0.5 0.5 0.5 1.0" />
@@ -17,8 +17,8 @@
     </visual>
     <collision>
       <geometry>
-        <!--<mesh filename="fork.stl" scale="0.10 0.10 0.10" />-->
-        <cylinder radius="0.0015" length="0.1"></cylinder>
+        <mesh filename="fork.stl"/>
+        <!--<cylinder radius="0.0015" length="0.1"></cylinder>-->
       </geometry>
     </collision>
   </link>

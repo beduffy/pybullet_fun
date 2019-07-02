@@ -1,0 +1,28 @@
+<robot name="beer_bottle">
+  <link name="beer_bottle">
+
+    <visual>
+        <origin rpy="1.57 0 0" xyz="0 0 0.0"/>
+      <!-- inertia correct!!! -->
+      <inertial>
+       <origin rpy="0 0 0" xyz="0.0 0 0.5"/>
+       <mass value="0.5"/>
+       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+      <geometry>
+        <mesh filename="beerbottle_belgian.obj"/>
+      </geometry>
+      <material name="c">
+        <color rgba="0.5 0.5 0.5 1.0" />
+      </material>
+    </visual>
+    <collision>
+    <origin rpy="1.57 0 0" xyz="0 0 0.0"/>
+      <geometry>
+
+        <mesh filename="beerbottle_belgian.obj"/>
+        <!--<cylinder radius="0.0015" length="0.1"></cylinder>-->
+      </geometry>
+    </collision>
+  </link>
+</robot>

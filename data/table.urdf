@@ -1,7 +1,7 @@
 <robot name="none">
        <link name="none">
            <visual>
-               <origin rpy="1.57 0 0" xyz="0 0 -0.3" />
+               <origin rpy="1.57 0 0" xyz="0 0 -0.325" />
                <geometry>
                    <mesh filename="table4.obj" />
                </geometry>
@@ -11,7 +11,7 @@
            </visual>
           <collision>
               <geometry>
-                  <box size="1.000000 0.535714 0.642857" />
+                  <box size="1.000000 0.535714 0.4" />
               </geometry>
           </collision>
 
