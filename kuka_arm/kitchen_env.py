@@ -51,7 +51,7 @@ lamp = p.loadURDF("nordic_floor_lamp_obj.urdf", basePosition=[1.5, 9, 1.3], glob
                  baseOrientation=quat_orientation)
 
 
-walls = p.loadURDF("kitchen_walls.urdf")
+kitchen_walls_and_floor = p.loadURDF("kitchen_walls.urdf")
 kitchen = p.loadURDF("kitchen.urdf", basePosition=[0.2, 0.2, 0.1])
 
 # todo attempt to make kitchen static while still keeping cupboards openable
@@ -62,7 +62,7 @@ kitchen = p.loadURDF("kitchen.urdf", basePosition=[0.2, 0.2, 0.1])
 #     #p.resetJointState(kitchen, jointIndex, jointPositions[jointIndex])
 #     print(p.getJointInfo(kitchen, jointIndex))
 #     print(p.getDynamicsInfo(kitchen, jointIndex))
-#     # p.changeDynamics(kitchen, jointIndex, mass=1000000)
+#     # p.changeDynamics(kitchen, jointIndex, mass=1000000) # try mass 0 for the heavy shit in the file
 #     # print(p.getDynamicsInfo(kitchen, jointIndex))
 #
 
@@ -84,6 +84,76 @@ print('Time taken to load all objects and begin simulation: {:.2f}'.format(time.
 ##########################
 ##########################
 ##########################
+
+def rand_cmap(nlabels, type='bright', first_color_black=True, last_color_black=False, verbose=False):
+    """
+    Creates a random colormap to be used together with matplotlib. Useful for segmentation tasks
+    :param nlabels: Number of labels (size of colormap)
+    :param type: 'bright' for strong colors, 'soft' for pastel colors
+    :param first_color_black: Option to use first color as black, True or False
+    :param last_color_black: Option to use last color as black, True or False
+    :param verbose: Prints the number of labels and shows the colormap. True or False
+    :return: colormap for matplotlib
+    """
+    from matplotlib.colors import LinearSegmentedColormap
+    import colorsys
+    import numpy as np
+
+
+    if type not in ('bright', 'soft'):
+        print ('Please choose "bright" or "soft" for type')
+        return
+
+    if verbose:
+        print('Number of labels: ' + str(nlabels))
+
+    # Generate color map for bright colors, based on hsv
+    if type == 'bright':
+        randHSVcolors = [(np.random.uniform(low=0.0, high=1),
+                          np.random.uniform(low=0.2, high=1),
+                          np.random.uniform(low=0.9, high=1)) for i in range(nlabels)]
+
+        # Convert HSV list to RGB
+        randRGBcolors = []
+        for HSVcolor in randHSVcolors:
+            randRGBcolors.append(colorsys.hsv_to_rgb(HSVcolor[0], HSVcolor[1], HSVcolor[2]))
+
+        if first_color_black:
+            randRGBcolors[0] = [0, 0, 0]
+
+        if last_color_black:
+            randRGBcolors[-1] = [0, 0, 0]
+
+        random_colormap = LinearSegmentedColormap.from_list('new_map', randRGBcolors, N=nlabels)
+
+    # Generate soft pastel colors, by limiting the RGB spectrum
+    if type == 'soft':
+        low = 0.6
+        high = 0.95
+        randRGBcolors = [(np.random.uniform(low=low, high=high),
+                          np.random.uniform(low=low, high=high),
+                          np.random.uniform(low=low, high=high)) for i in range(nlabels)]
+
+        if first_color_black:
+            randRGBcolors[0] = [0, 0, 0]
+
+        if last_color_black:
+            randRGBcolors[-1] = [0, 0, 0]
+        random_colormap = LinearSegmentedColormap.from_list('new_map', randRGBcolors, N=nlabels)
+
+    # Display colorbar
+    if verbose:
+        from matplotlib import colors, colorbar
+        from matplotlib import pyplot as plt
+        fig, ax = plt.subplots(1, 1, figsize=(15, 0.5))
+
+        bounds = np.linspace(0, nlabels, nlabels + 1)
+        norm = colors.BoundaryNorm(bounds, nlabels)
+
+        cb = colorbar.ColorbarBase(ax, cmap=random_colormap, norm=norm, spacing='proportional', ticks=None,
+                                   boundaries=bounds, format='%1i', orientation=u'horizontal')
+
+    return random_colormap
 
 def getRayFromTo(mouseX, mouseY):
     width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, _, _, dist, camTarget = p.getDebugVisualizerCamera()
@@ -154,7 +224,7 @@ def create_point_cloud_and_occupancy_grid():
     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
     p.configureDebugVisualizer(p.COV_ENABLE_TINY_RENDERER, 0)
-    # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)  # todo remove? slow
+    # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)  # if you want to visualise the balls appearing but makes it very slow
     visualShapeId = p.createVisualShape(shapeType=p.GEOM_SPHERE, rgbaColor=[1, 1, 1, 1], radius=0.03)
     collisionShapeId = -1  # p.createCollisionShape(shapeType=p.GEOM_MESH, fileName="duck_vhacd.obj", collisionFramePosition=shift,meshScale=meshScale)
 
@@ -174,7 +244,7 @@ def create_point_cloud_and_occupancy_grid():
     count = 0
 
     step_amt = 3
-    step_amt = 1
+    # step_amt = 1
     stepX = step_amt
     stepY = step_amt
     all_ball_locations = []
@@ -200,6 +270,8 @@ def create_point_cloud_and_occupancy_grid():
             if math.sqrt(newTo[0] ** 2 + newTo[1] ** 2) < 30:  # magic number for now
                 all_ball_locations.append(newTo)
                 all_ball_seg_objs.append(segBuffer[h, w])
+
+                # Place balls with colour of pixel
                 # p.addUserDebugLine(rayFrom, newTo, [1, 0, 0])
                 # mb = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=collisionShapeId,
                 #                        baseVisualShapeIndex=visualShapeId, basePosition=newTo,
@@ -207,6 +279,7 @@ def create_point_cloud_and_occupancy_grid():
                 # color = rgbBuffer[h, w]
                 # color = [color[0] / 255., color[1] / 255., color[2] / 255., 1]
                 # p.changeVisualShape(mb, -1, rgbaColor=color)
+
     # trapezoid camera view pinhole frustum thingy
     p.addUserDebugLine(corners3D[0], corners3D[1], [1, 0, 0])
     p.addUserDebugLine(corners3D[1], corners3D[2], [1, 0, 0])
@@ -226,7 +299,7 @@ def create_point_cloud_and_occupancy_grid():
     # 1. Plot x, y locations of all balls, and plot location of bla
     # 2. Plot grid with linspace or other
 
-    floor_height = 0.201  # floor width was 0.2
+    floor_height = 0.2001  # floor width was 0.2
     all_ball_x_y_locations_above_floor = [(ball_loc[0], ball_loc[1], ball_seg) for ball_loc, ball_seg in
                                           zip(all_ball_locations, all_ball_seg_objs)
                                           if ball_loc[2] > floor_height]
@@ -283,37 +356,27 @@ def create_point_cloud_and_occupancy_grid():
     ax3.set_xticklabels([round(x, 1) for x in x_range])
     ax3.set_yticklabels([round(y, 1) for y in y_range])
     plt.xticks(rotation=80)
-    # cmap = colors.ListedColormap(['k', 'b', 'y', 'g', 'r'] * 50)  # todo hack
-    # map for -2097151976 -> 0 so colour map works
-    # def get_cmap(n, name='hsv'):
-    #     '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
-    #     RGB color; the keyword argument name must be a standard mpl colormap name.'''
-    #     return plt.cm.get_cmap(name, n)
-    #
-    # num_unique_objects = len(np.unique(grid_object_class))
-    # import pdb;pdb.set_trace()
+    num_unique_objects = len(np.unique(grid_object_class))
+    import pdb;pdb.set_trace()
+    print('{} unique objects in segmentation buffer'.format(num_unique_objects))
+    mapping_to_positive_ints = {x: i for i, x in enumerate(np.unique(segBuffer))}
+    # Make kitchen_walls_and_floor object the 0th index so tmp swap needed
+    key_with_0_value = list(mapping_to_positive_ints.keys())[list(mapping_to_positive_ints.values()).index(0)]
+    mapping_to_positive_ints[key_with_0_value] = mapping_to_positive_ints[kitchen_walls_and_floor]
+    mapping_to_positive_ints[kitchen_walls_and_floor] = 0
 
-    # #
-    # from itertools import cycle
-    # cycol = cycle('bgrcmk')
-    # #
+    grid_object_class_mapped_positive_ints = np.copy(grid_object_class)
+    for key in mapping_to_positive_ints:
+        grid_object_class_mapped_positive_ints[grid_object_class == key] = \
+            mapping_to_positive_ints[key]
+    ax3.imshow(grid_object_class_mapped_positive_ints, interpolation='none', cmap=new_cmap)
 
-    # cm = get_cmap(num_unique_objects)# todo make 0 black and the rest random colouirs
-    # cmap = [[0, 0, 0]] + get_cmap(num_unique_objects)
-    # print('{} unique objects in segmentation buffer'.format(num_unique_objects))
-    # mapping_to_positive_ints = {x: i for i, x in enumerate(np.unique(seg))}
-    # grid_object_class_mapped_positive_ints = np.copy(grid_object_class)
-    # for key in mapping_to_positive_ints:
-    #     grid_object_class_mapped_positive_ints[grid_object_class == key] = \
-    #         mapping_to_positive_ints[key]
-    # ax3.imshow(grid_object_class_mapped_positive_ints, interpolation='none', cmap=cmap)  # c = next(cycol)
-
-
-    # todo create terrain map
+    # todo create terrain map?
 
     plt.show()
 
-time.sleep(4)
+# time.sleep(4)
+new_cmap = rand_cmap(100, type='bright', first_color_black=True, last_color_black=False)
 segLinkIndex = False
 for i in range(10000000):
     keys = p.getKeyboardEvents()
