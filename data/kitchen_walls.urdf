@@ -12,7 +12,7 @@
         <visual>
           <origin rpy="0 0 0" xyz="0.0 4.5 0.75"/>
           <geometry>
-            <box size="0.15 10 1.5"/>
+            <box size="0.15 10 2.25"/>
           </geometry>
           <material name="brown">
             <color rgba="0.87 0.72 0.52 1"/>
@@ -21,7 +21,7 @@
         <collision>
           <origin rpy="0 0 0" xyz="0.0 4.5 0.75"/>
           <geometry>
-            <box size="0.15 10 1.5"/>
+            <box size="0.15 10 2.25"/>
           </geometry>
         </collision>
   </link>
@@ -37,7 +37,7 @@
         <visual>
           <origin rpy="0 0 0" xyz="2.25 4.5 0"/>
           <geometry>
-            <box size="4.4 10 0.2"/>
+            <box size="4.3 10 0.2"/>
           </geometry>
           <material name="brown">
             <color rgba="0.87 0.72 0.52 1"/>
@@ -46,7 +46,7 @@
         <collision>
           <origin rpy="0 0 0" xyz="2.25 4.5 0"/>
           <geometry>
-            <box size="4.4 10 0.2"/>
+            <box size="4.3 10 0.2"/>
           </geometry>
         </collision>
   </link>
@@ -62,7 +62,7 @@
         <visual>
           <origin rpy="0 0 1.57" xyz="2.15 -0.5 0.75"/>
           <geometry>
-            <box size="0.15 4.5 1.5"/>
+            <box size="0.15 4.5 2.25"/>
           </geometry>
           <material name="brown">
             <color rgba="0.87 0.72 0.52 1"/>
@@ -71,7 +71,7 @@
         <collision>
           <origin rpy="0 0 1.57" xyz="2.15 -0.5 0.75"/>
           <geometry>
-            <box size="0.15 4.5 1.5"/>
+            <box size="0.15 4.5 2.25"/>
           </geometry>
         </collision>
   </link>
@@ -87,7 +87,7 @@
         <visual>
           <origin rpy="0 0 0" xyz="4.3 4.5 0.75"/>
           <geometry>
-            <box size="0.15 10 1.5"/>
+            <box size="0.15 10 2.25"/>
           </geometry>
           <material name="brown">
             <color rgba="0.87 0.72 0.52 1"/>
@@ -96,7 +96,7 @@
         <collision>
           <origin rpy="0 0 0" xyz="4.3 4.5 0.75"/>
           <geometry>
-            <box size="0.15 10 1.5"/>
+            <box size="0.15 10 2.25"/>
           </geometry>
         </collision>
   </link>
@@ -113,7 +113,7 @@
         <visual>
           <origin rpy="0 0 1.57" xyz="0.95 4.5 0.75"/>
           <geometry>
-            <box size="0.15 1.75 1.5"/>
+            <box size="0.15 1.75 2.25"/>
           </geometry>
           <material name="brown">
             <color rgba="0.87 0.72 0.52 1"/>
@@ -122,7 +122,7 @@
         <collision>
           <origin rpy="0 0 1.57" xyz="0.75 4.5 0.75"/>
           <geometry>
-            <box size="0.15 2 1.5"/>
+            <box size="0.15 2 2.25"/>
           </geometry>
         </collision>
   </link>
@@ -138,7 +138,7 @@
         <visual>
           <origin rpy="0 0 1.57" xyz="3.5 4.5 0.75"/>
           <geometry>
-            <box size="0.15 1.6 1.5"/>
+            <box size="0.15 1.6 2.25"/>
           </geometry>
           <material name="brown">
             <color rgba="0.87 0.72 0.52 1"/>
@@ -147,36 +147,10 @@
         <collision>
           <origin rpy="0 0 1.57" xyz="3.5 4.5 0.75"/>
           <geometry>
-            <box size="0.15 1.6 1.5"/>
+            <box size="0.15 1.6 2.25"/>
           </geometry>
         </collision>
   </link>
-  <!--<link name="door_between_kitchen_and_living_room">
-      <contact>
-          <lateral_friction value="1"/>
-      </contact>
-        <inertial>
-          <origin rpy="0 0 0" xyz="0 0 0"/>
-           <mass value="1"/>
-           <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
-        </inertial>
-        <visual>
-          <origin rpy="0 0 1.57" xyz="0.75 0 0"/>
-          <geometry>
-            <box size="0.15 1.433 1.5"/>
-          </geometry>
-          <material name="red">
-            <color rgba="0.87 0 0 1"/>
-          </material>
-        </visual>
-        <collision>
-          <origin rpy="0 0 1.57" xyz="0.75 0 0"/>
-          <geometry>
-            <box size="0.15 1.433 1.5"/>
-          </geometry>
-        </collision>
-  </link>-->
-
   <link name="door_between_kitchen_and_living_room">
     <visual>
       <origin rpy="1.57 0 -3.14" xyz="0.5 0 -0.7"/>
@@ -212,7 +186,7 @@
         <visual>
           <origin rpy="0 0 1.57" xyz="2.15 9.5 0.75"/>
           <geometry>
-            <box size="0.15 4.5 1.5"/>
+            <box size="0.15 4.5 2.25"/>
           </geometry>
           <material name="brown">
             <color rgba="0.87 0.72 0.52 1"/>
@@ -221,7 +195,7 @@
         <collision>
           <origin rpy="0 0 1.57" xyz="2.15 9.5 0.75"/>
           <geometry>
-            <box size="0.15 4.5 1.5"/>
+            <box size="0.15 4.5 2.25"/>
           </geometry>
         </collision>
   </link>
