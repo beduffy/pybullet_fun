@@ -1,74 +1,45 @@
 import math
 import time
 from collections import Counter
+import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 from matplotlib import colors
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 from matplotlib.font_manager import FontProperties
 import pybullet as p
+from tqdm import tqdm
+import scipy.io
+import scipy.stats
 
-start_time = time.time()
-
-cid = p.connect(p.SHARED_MEMORY)
-if (cid < 0):
-    p.connect(p.GUI)
-
-p.resetSimulation()
-p.setGravity(0, 0, -9.8)
-p.loadURDF("plane.urdf")
-
-default_quat_orientation = p.getQuaternionFromEuler([0, 0, 0])
-quat_orientation = p.getQuaternionFromEuler([0, 0, 3.14 / 2])
-
-all_objects = [
-    {'urdf_fn': 'beer_bottle.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
-    {'urdf_fn': 'bowl.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
-    {'urdf_fn': 'plate.urdf', 'basePosition': [3.4, 1, 1.1], 'dynamic': True},
-    {'urdf_fn': 'glass.urdf', 'basePosition': [3.5, 1.3, 1.1], 'dynamic': True},
-    {'urdf_fn': 'knife.urdf', 'basePosition': [3.6, 1.7, 1.1], 'dynamic': True, 'globalScaling': 0.01},
-    {'urdf_fn': 'spoon.urdf', 'basePosition': [3.5, 1.2, 1.1], 'dynamic': True, 'globalScaling': 0.01},
-    {'urdf_fn': 'fork.urdf', 'basePosition': [3.4, 1.65, 1.1], 'dynamic': True, 'globalScaling': 1.0},
-    {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 0.7, 1.1], 'dynamic': True, 'globalScaling': 0.016},
-    {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 6, 1.5], 'dynamic': True, 'globalScaling': 0.016},
-    {'urdf_fn': 'banana.urdf', 'basePosition': [3.6, 2.3, 1.1], 'dynamic': True},
-    {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.5, 2.4, 1.1], 'dynamic': True, 'globalScaling': 0.01},
-    {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.45, 6.35, 1.5], 'dynamic': True, 'globalScaling': 0.01},
-    {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.4, 2, 1.1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
-    {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.6, 5.8, 1.55], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
-    {'urdf_fn': 'TeaCup.urdf', 'basePosition': [1.5, 5.8, 1.5], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
-    {'urdf_fn': 'sofa.urdf', 'basePosition': [0.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-    {'urdf_fn': 'table.urdf', 'basePosition': [1.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-    {'urdf_fn': 'table.urdf', 'basePosition': [3.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.5},
-    {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 9, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-    {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 4, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-    {'urdf_fn': 'bed.urdf', 'basePosition': [1.1, 7.8, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.7},
-    {'urdf_fn': 'nordic_floor_lamp_obj.urdf', 'basePosition': [1.5, 9, 1.3], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.01},
-    {'urdf_fn': 'kitchen_walls.urdf', 'dynamic': False},  # todo some link segmentation is black because https://github.com/bulletphysics/bullet3/issues/1631
-    {'urdf_fn': 'kitchen.urdf', 'basePosition': [0.1, 0.15, 0.1], 'dynamic': False}
-]
-
-all_obj_names_counter = Counter()
-for idx, object_spec in enumerate(all_objects):
-    print('Loading urdf object with specification: {}'.format(object_spec))
-    obj_id = p.loadURDF(object_spec['urdf_fn'], basePosition=object_spec.get('basePosition', [0, 0, 0]),
-                        globalScaling=object_spec.get('globalScaling', 1.0),
-                        baseOrientation=object_spec.get('baseOrientation', default_quat_orientation),
-                        flags=object_spec.get('flags', 0)
-                        )
-    all_objects[idx]['obj_id'] = obj_id
-    canonical_name = object_spec['urdf_fn'][:-5]
-    all_obj_names_counter.update([canonical_name])
-    all_objects[idx]['obj_name'] = '{}_{}'.format(canonical_name,
-                                                  all_obj_names_counter['canonical_name'])
+from kitchen_utils import rand_cmap  # i hate pycharm
+# from .kitchen_utils import rand_cmap
 
 
-all_obj_ids = [obj['obj_id'] for obj in all_objects]
-obj_id_to_obj_name = {obj['obj_id']: obj['obj_name'] for obj in all_objects}
-obj_name_to_obj_id = {obj['obj_name']: obj['obj_id'] for obj in all_objects}
-print(obj_id_to_obj_name)
+def load_all_urdfs():
+    all_obj_names_counter = Counter()
+    for idx, object_spec in enumerate(all_objects):
+        print('Loading urdf object with specification: {}'.format(object_spec))
+        obj_id = p.loadURDF(object_spec['urdf_fn'], basePosition=object_spec.get('basePosition', [0, 0, 0]),
+                            globalScaling=object_spec.get('globalScaling', 1.0),
+                            baseOrientation=object_spec.get('baseOrientation', default_quat_orientation),
+                            flags=object_spec.get('flags', 0)
+                            )
+        all_objects[idx]['obj_id'] = obj_id
+        canonical_name = object_spec['urdf_fn'][:-5]
+        all_obj_names_counter.update([canonical_name])
+        all_objects[idx]['obj_name'] = '{}_{}'.format(canonical_name,
+                                                      all_obj_names_counter['canonical_name'])
+
+
+    all_obj_ids = [obj['obj_id'] for obj in all_objects]
+    obj_id_to_obj_name = {obj['obj_id']: obj['obj_name'] for obj in all_objects}
+    obj_name_to_obj_id = {obj['obj_name']: obj['obj_id'] for obj in all_objects}
+    print(obj_id_to_obj_name)
+    return obj_id_to_obj_name, obj_name_to_obj_id
 
 # todo attempt to make kitchen static while still keeping cupboards openable
 # kitchen = p.loadURDF("kitchen.urdf")
@@ -81,93 +52,6 @@ print(obj_id_to_obj_name)
 #     # p.changeDynamics(kitchen, jointIndex, mass=1000000) # try mass 0 for the heavy shit in the file
 #     # print(p.getDynamicsInfo(kitchen, jointIndex))
 #
-
-print('Time taken to load all objects and begin simulation: {:.2f}'.format(time.time() - start_time))
-
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-##########################
-
-def rand_cmap(nlabels, type='bright', first_color_black=True, last_color_black=False, verbose=False):
-    """
-    Creates a random colormap to be used together with matplotlib. Useful for segmentation tasks
-    :param nlabels: Number of labels (size of colormap)
-    :param type: 'bright' for strong colors, 'soft' for pastel colors
-    :param first_color_black: Option to use first color as black, True or False
-    :param last_color_black: Option to use last color as black, True or False
-    :param verbose: Prints the number of labels and shows the colormap. True or False
-    :return: colormap for matplotlib
-    """
-    from matplotlib.colors import LinearSegmentedColormap
-    import colorsys
-
-    if type not in ('bright', 'soft'):
-        print ('Please choose "bright" or "soft" for type')
-        return
-
-    if verbose:
-        print('Number of labels: ' + str(nlabels))
-
-    # Generate color map for bright colors, based on hsv
-    if type == 'bright':
-        randHSVcolors = [(np.random.uniform(low=0.0, high=1),
-                          np.random.uniform(low=0.2, high=1),
-                          np.random.uniform(low=0.9, high=1)) for i in range(nlabels)]
-
-        # Convert HSV list to RGB
-        randRGBcolors = []
-        for HSVcolor in randHSVcolors:
-            randRGBcolors.append(colorsys.hsv_to_rgb(HSVcolor[0], HSVcolor[1], HSVcolor[2]))
-
-        if first_color_black:
-            randRGBcolors[0] = [0, 0, 0]
-
-        if last_color_black:
-            randRGBcolors[-1] = [0, 0, 0]
-
-        random_colormap = LinearSegmentedColormap.from_list('new_map', randRGBcolors, N=nlabels)
-
-    # Generate soft pastel colors, by limiting the RGB spectrum
-    if type == 'soft':
-        low = 0.6
-        high = 0.95
-        randRGBcolors = [(np.random.uniform(low=low, high=high),
-                          np.random.uniform(low=low, high=high),
-                          np.random.uniform(low=low, high=high)) for i in range(nlabels)]
-
-        if first_color_black:
-            randRGBcolors[0] = [0, 0, 0]
-
-        if last_color_black:
-            randRGBcolors[-1] = [0, 0, 0]
-        random_colormap = LinearSegmentedColormap.from_list('new_map', randRGBcolors, N=nlabels)
-
-    # Display colorbar
-    if verbose:
-        from matplotlib import colors, colorbar
-        from matplotlib import pyplot as plt
-        fig, ax = plt.subplots(1, 1, figsize=(15, 0.5))
-
-        bounds = np.linspace(0, nlabels, nlabels + 1)
-        norm = colors.BoundaryNorm(bounds, nlabels)
-
-        cb = colorbar.ColorbarBase(ax, cmap=random_colormap, norm=norm, spacing='proportional', ticks=None,
-                                   boundaries=bounds, format='%1i', orientation=u'horizontal')
-
-    return random_colormap
 
 def getRayFromTo(mouseX, mouseY):
     width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, _, _, dist, camTarget = p.getDebugVisualizerCamera()
@@ -204,7 +88,7 @@ def getRayFromTo(mouseX, mouseY):
 def create_point_cloud_and_occupancy_grid():
     start_of_point_cloud_calculation = time.time()
     print('Beginning point cloud and occupancy grid creation')
-    width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, _, _, dist, camTarget = p.getDebugVisualizerCamera()
+    width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, pitch, yaw, dist, camTarget = p.getDebugVisualizerCamera()
     camPos = [camTarget[0] - dist * camForward[0], camTarget[1] - dist * camForward[1],
               camTarget[2] - dist * camForward[2]]
     farPlane = 10000
@@ -260,8 +144,7 @@ def create_point_cloud_and_occupancy_grid():
 
     step_amt = 3
     # step_amt = 1
-    stepX = step_amt
-    stepY = step_amt
+    stepX, stepY = step_amt, step_amt
     all_ball_locations = []
     all_ball_seg_objs = []
     for w in range(0, imgW, stepX):
@@ -301,42 +184,29 @@ def create_point_cloud_and_occupancy_grid():
     p.addUserDebugLine(corners3D[2], corners3D[3], [1, 0, 0])
     p.addUserDebugLine(corners3D[3], corners3D[0], [1, 0, 0])
     p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-    print("ready\n")
-
-    # zeros = np.zeros_like(seg)
-    # zeros[seg == 11] = 1
-    # plt.imshow(zeros)
-    # plt.show()
-    # depth[seg == 11]
-    # np.linspace(-15, 15)
+    print("Ready to create grid")
 
     floor_height = 0.2001  # floor width was 0.2
     all_ball_x_y_locations_above_floor = [(ball_loc[0], ball_loc[1], ball_seg) for ball_loc, ball_seg in
                                           zip(all_ball_locations, all_ball_seg_objs)
                                           if ball_loc[2] > floor_height]
 
-    fig, (ax, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 10))
 
-    ax.scatter([x[0] for x in all_ball_x_y_locations_above_floor],
-               [x[1] for x in all_ball_x_y_locations_above_floor], s=1.5)
-    ax.scatter(camPos[0], camPos[1], color='r')
-    x_range = np.arange(math.floor(ax.get_xlim()[0]), math.ceil(ax.get_xlim()[1]), 0.1)
-    y_range = np.arange(math.floor(ax.get_ylim()[0]), math.ceil(ax.get_ylim()[1]), 0.1)
-    ax.set_xticks(x_range)
-    ax.set_yticks(y_range)
-    ax.grid(True)
-    ax.set_title('Point Cloud 2D')
-    plt.xticks(rotation=80)
-    print('Time taken to create pointcloud and occupancy grid: {}'.format(
-        time.time() - start_of_point_cloud_calculation))
+
 
     # loop through each point and set occupancy grid to 1 where it is closest
+    # x_range = np.arange(math.floor(ax.get_xlim()[0]), math.ceil(ax.get_xlim()[1]), 0.1)
+    # y_range = np.arange(math.floor(ax.get_ylim()[0]), math.ceil(ax.get_ylim()[1]), 0.1)
+    all_x = [ball[0] for ball in all_ball_x_y_locations_above_floor]
+    all_y = [ball[1] for ball in all_ball_x_y_locations_above_floor]
+    x_range = np.arange(math.floor(min(all_x) - 1), math.ceil(max(all_x)), 0.1)
+    y_range = np.arange(math.floor(min(all_y) - 1), math.ceil(max(all_y)), 0.1)
 
     def set_closest_occupancy_grid(ball):
         ball_seg_class = ball[2]
         x, y = round(ball[0], 1), round(ball[1], 1)
         grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)
-        grid[grid.shape[0] - grid_y, grid_x] = 1
+        grid[grid.shape[0] - grid_y, grid_x] = 1  # todo crashed in another room. fix
         grid_object_class[grid.shape[0] - grid_y, grid_x] = ball_seg_class
         grid_list_object_class[grid.shape[0] - grid_y][grid_x].append(ball_seg_class)  # todo could double check if it properly works
 
@@ -348,6 +218,67 @@ def create_point_cloud_and_occupancy_grid():
     for ball in all_ball_x_y_locations_above_floor:
         set_closest_occupancy_grid(ball)
 
+    # draw all figure plots
+
+    camForward_xy = (camTarget[0] - camPos[0]), (camTarget[1] - camPos[1])
+    append_pose_and_beam_measurements(camPos, camForward_xy, all_ball_x_y_locations_above_floor,
+                                      x_range, y_range)
+
+    draw_figures(x_range, y_range, all_ball_x_y_locations_above_floor, camPos, camForward_xy, grid,
+                 grid_object_class, segBuffer)
+    print('Time taken to create pointcloud and occupancy grid: {}'.format(
+        time.time() - start_of_point_cloud_calculation))
+
+
+    # p.resetDebugVisualizerCamera(cameraDistance=dist, cameraYaw=yaw, cameraPitch=pitch,
+    #                                     cameraTargetPosition=camTarget)  # failed attempt at putting camera to old position. hmm
+
+def append_pose_and_beam_measurements(camPos, camForward_xy, all_ball_x_y_locations_above_floor,
+                                      x_range, y_range):
+    # todo get angles of lines. atan2?
+    #  atan2 takes two arguments and uses the sign information to calculate correct quadrant for the angle
+
+    # todo need: measurements. each has: (range, angle of beam)
+    beam_measurements = []
+    for ball in all_ball_x_y_locations_above_floor:
+        range_of_beam = np.sqrt(np.sum((np.array((camPos[0], camPos[1])) -
+                                        np.array((ball[0], ball[1]))) ** 2))
+        angle_of_beam = math.atan2(ball[1] - camPos[1], ball[0] - camPos[
+            0])  # todo we subtract later, should we do now? todo confirm right here
+        beam_measurements.append((range_of_beam, angle_of_beam))
+    beam_measurements = np.array(beam_measurements).reshape(1, len(beam_measurements),
+                                                            len(beam_measurements[0]))
+
+    import pdb;
+    pdb.set_trace()
+    # todo need: state/pose. each has: (x, y, theta (direction we are facing))
+    # pose = (camPos[0], camPos[1], math.atan2(camForward_xy[1] - camPos[1], camForward_xy[0] - camPos[0])) ## todo remove CamPos?!?!?!?!?!
+    # pose = np.array([(camPos[0], camPos[1], math.atan2(camPos[1], camPos[0]))])
+    pose = np.array([(camPos[0], camPos[1], math.atan2(camForward_xy[1], camForward_xy[
+        0]))])  # todo maybe first one is correct? nah
+
+    with open('beam_measurements_and_pose.pkl', 'wb') as f:
+        pickle.dump(
+            {'beam_measurements': beam_measurements, 'pose': pose, 'grid_xrange': len(x_range),
+             'grid_yrange': len(y_range)}, f)
+
+def draw_figures(x_range, y_range, all_ball_x_y_locations_above_floor, camPos, camForward_xy, grid, grid_object_class, segBuffer):
+    fig, (ax, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 10))
+
+    ax.scatter([x[0] for x in all_ball_x_y_locations_above_floor],
+               [x[1] for x in all_ball_x_y_locations_above_floor], s=1.5)
+    ax.scatter(camPos[0], camPos[1], color='r')
+    for ball in all_ball_x_y_locations_above_floor:
+        ax.plot([camPos[0], ball[0]], [camPos[1], ball[1]], c='r', linewidth=0.2)
+
+    # import pdb;    pdb.set_trace()
+    ax.plot([camPos[0], camForward_xy[0]], [camPos[1], camForward_xy[1]], c='blue', linewidth=2.0)  # todo make line segment. too long.
+    ax.set_xticks(x_range)
+    ax.set_yticks(y_range)
+    ax.grid(True)
+    ax.set_title('Point Cloud 2D')
+    plt.xticks(rotation=80)
+
     fig.canvas.draw()
     ax2.set_xticks(range(x_range.shape[0]))
     ax2.set_yticks(range(y_range.shape[0]))
@@ -357,82 +288,275 @@ def create_point_cloud_and_occupancy_grid():
     ax2.set_title('Occupancy Grid')
     ax2.imshow(grid, interpolation='none', cmap='gray')
 
-    fig.canvas.draw()
-    ax3.set_xticks(range(x_range.shape[0]))
-    ax3.set_yticks(range(y_range.shape[0]))
-    ax3.set_xticklabels([round(x, 1) for x in x_range])
-    ax3.set_yticklabels([round(y, 1) for y in y_range])
-    ax3.set_title('Object Map')
-    plt.xticks(rotation=80)
-    num_unique_objects = len(np.unique(grid_object_class))
+    # fig.canvas.draw()
+    # ax3.set_xticks(range(x_range.shape[0]))
+    # ax3.set_yticks(range(y_range.shape[0]))
+    # ax3.set_xticklabels([round(x, 1) for x in x_range])
+    # ax3.set_yticklabels([round(y, 1) for y in y_range])
+    # ax3.set_title('Object Map')
+    # plt.xticks(rotation=80)
+    # num_unique_objects = len(np.unique(grid_object_class))
+    #
+    # print('{} unique objects in segmentation buffer'.format(num_unique_objects))
+    # uniq_ints_in_seg_buffer = np.unique(segBuffer)
+    # mapping_to_positive_ints = {x: i for i, x in enumerate(uniq_ints_in_seg_buffer)}
+    # # mapping_from_positive_ints_to_orig = {i: x for i, x in enumerate(uniq_ints_in_seg_buffer)}
+    # # Make kitchen_walls_and_floor object the 0th index so tmp swap needed
+    # key_with_0_value = list(mapping_to_positive_ints.keys())[list(mapping_to_positive_ints.values()).index(0)]
+    # mapping_to_positive_ints[key_with_0_value] = mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']]
+    # mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']] = 0
+    #
+    # grid_object_class = grid_object_class.astype('int64')
+    # grid_object_class_mapped_positive_ints = np.copy(grid_object_class)
+    # for key in mapping_to_positive_ints:
+    #     grid_object_class_mapped_positive_ints[grid_object_class == key] = \
+    #         mapping_to_positive_ints[key]
+    # ax3.imshow(grid_object_class_mapped_positive_ints, interpolation='none', cmap=new_cmap)
+    # fontP = FontProperties()
+    # fontP.set_size('small')
+    # # reverse mapping. Colour should be the value of mapping_to_positive_ints[key]
+    # # Label should be object name using original key
+    # legend_elements = [Patch(facecolor=new_cmap(positive_val),
+    #                    label=obj_id_to_obj_name[key])
+    #                    for key, positive_val in mapping_to_positive_ints.items()
+    #                    if key in obj_id_to_obj_name]
+    # box = ax3.get_position()
+    # ax3.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    # ax3.legend(loc='center left', handles=legend_elements, prop=fontP,  bbox_to_anchor=(1, 0.5))
+    #
+    # print("obj_name_to_obj_id['kitchen_0']: {}".format(obj_name_to_obj_id['kitchen_0']))
+    # print('mapping_to_positive_ints[obj_name_to_obj_id[\'kitchen_0\']: ', mapping_to_positive_ints[obj_name_to_obj_id['kitchen_0']])
+    # positive_val = mapping_to_positive_ints[obj_name_to_obj_id['kitchen_0']]
+    # c = new_cmap(positive_val)
+    #
+    # print('new_cmap(positive_val): rgb({},{},{})'.format(int(c[0] * 255), int(c[1] * 255), int(c[2] * 255)))
+    # plt.figure()
+    # plt.imshow(segBuffer == obj_name_to_obj_id['kitchen_0'])
+    # plt.figure()
+    # arr = np.array([[0, 1, 2, 3, 4, 5, 7], [1, 1, 1, 1, 1, 1, 1]])
+    # plt.imshow(arr, interpolation='none', cmap=new_cmap)
+    #
+    # # plt.figure()
+    #
+    #
+    # fig, (ax4) = plt.subplots(1, 1, figsize=(5, 5))
+    # import pdb;
+    # pdb.set_trace()
+    # # ax4.pcolor(grid_object_class_mapped_positive_ints, cmap=new_cmap)
+    # my_cmap = plt.get_cmap('Paired', 40)
+    # # my_cmap = ListedColormap(['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w'] * 10)
+    # ax4.pcolor(grid_object_class_mapped_positive_ints, cmap=my_cmap)
+    # ax4.set_title('the one')
+    # fontP = FontProperties()
+    # fontP.set_size('small')
+    # # reverse mapping. Colour should be the value of mapping_to_positive_ints[key]
+    # # Label should be object name using original key
+    # legend_elements = [Patch(facecolor=my_cmap(positive_val),
+    #                          label=obj_id_to_obj_name[key])
+    #                    for key, positive_val in mapping_to_positive_ints.items()
+    #                    if key in obj_id_to_obj_name]
+    # box = ax4.get_position()
+    # ax4.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    # ax4.legend(loc='center left', handles=legend_elements, prop=fontP, bbox_to_anchor=(1, 0.5))
+    #
+    # # todo try pcolormap here!!!! https://matplotlib.org/3.1.0/gallery/images_contours_and_fields/pcolor_demo.html#sphx-glr-gallery-images-contours-and-fields-pcolor-demo-py
+    # # todo or here: https://stackoverflow.com/questions/52566969/python-mapping-a-2d-array-to-a-grid-with-pyplot
+    # # todo also try cmap blues or something. But we want the first to be black
+    # # todo draw the lasers/lines to the balls in 2d map because it looks cool
 
-    print('{} unique objects in segmentation buffer'.format(num_unique_objects))
-    uniq_ints_in_seg_buffer = np.unique(segBuffer)
-    mapping_to_positive_ints = {x: i for i, x in enumerate(uniq_ints_in_seg_buffer)}
-    # mapping_from_positive_ints_to_orig = {i: x for i, x in enumerate(uniq_ints_in_seg_buffer)}
-    # Make kitchen_walls_and_floor object the 0th index so tmp swap needed
-    key_with_0_value = list(mapping_to_positive_ints.keys())[list(mapping_to_positive_ints.values()).index(0)]
-    mapping_to_positive_ints[key_with_0_value] = mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']]
-    mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']] = 0
-
-    grid_object_class = grid_object_class.astype('int64')
-    grid_object_class_mapped_positive_ints = np.copy(grid_object_class)
-    for key in mapping_to_positive_ints:
-        grid_object_class_mapped_positive_ints[grid_object_class == key] = \
-            mapping_to_positive_ints[key]
-    ax3.imshow(grid_object_class_mapped_positive_ints, interpolation='none', cmap=new_cmap)
-    fontP = FontProperties()
-    fontP.set_size('small')
-    # reverse mapping. Colour should be the value of mapping_to_positive_ints[key]
-    # Label should be object name using original key
-    legend_elements = [Patch(facecolor=new_cmap(positive_val),
-                       label=obj_id_to_obj_name[key])
-                       for key, positive_val in mapping_to_positive_ints.items()
-                       if key in obj_id_to_obj_name]
-    box = ax3.get_position()
-    ax3.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    ax3.legend(loc='center left', handles=legend_elements, prop=fontP,  bbox_to_anchor=(1, 0.5))
-
-    print("obj_name_to_obj_id['kitchen_0']: {}".format(obj_name_to_obj_id['kitchen_0']))
-    print('mapping_to_positive_ints[obj_name_to_obj_id[\'kitchen_0\']: ', mapping_to_positive_ints[obj_name_to_obj_id['kitchen_0']])
-    positive_val = mapping_to_positive_ints[obj_name_to_obj_id['kitchen_0']]
-    c = new_cmap(positive_val)
-
-    print('new_cmap(positive_val): rgb({},{},{})'.format(int(c[0] * 255), int(c[1] * 255), int(c[2] * 255)))
-    plt.figure()
-    plt.imshow(segBuffer == obj_name_to_obj_id['kitchen_0'])
-    plt.figure()
-    arr = np.array([[0, 1, 2, 3, 4, 5, 7], [1, 1, 1, 1, 1, 1, 1]])
-    plt.imshow(arr, interpolation='none', cmap=new_cmap)
-
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     plt.show()
 
 
-# time.sleep(4)
-new_cmap = rand_cmap(100, type='bright', first_color_black=True, last_color_black=False, verbose=True)
-segLinkIndex = False
-print('Beginning physics simulation loop')
-for i in range(10000000):
-    keys = p.getKeyboardEvents()
+class Map():
+    def __init__(self, xsize, ysize, grid_size):
+        self.xsize = xsize + 2 # Add extra cells for the borders
+        self.ysize = ysize + 2
+        self.xsize = xsize + 30  # Add extra cells for the borders # todo good idea or not?
+        self.ysize = ysize + 30
+        self.grid_size = grid_size # save this off for future use
+        self.log_prob_map = np.zeros((self.xsize, self.ysize)) # set all to zero
 
-    if ord('d') in keys:
-        state = keys[ord('d')]
-        if (state & p.KEY_WAS_RELEASED):
-            segLinkIndex = 1 - segLinkIndex
-            # print("segLinkIndex=",segLinkIndex)
-            print(segLinkIndex)
-    if ord('p') in keys:
-        state = keys[ord('p')]
-        if (state & p.KEY_WAS_RELEASED):
-            create_point_cloud_and_occupancy_grid()
+        self.alpha = 1.0 # The assumed thickness of obstacles
+        self.beta = 5.0 * np.pi / 180.0 # The assumed width of the laser beam
+        self.z_max = 150.0 # The max reading from the laser
 
-    flags = 0
-    if (segLinkIndex):
-        flags = p.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX
+        # Pre-allocate the x and y positions of all grid positions into a 3D tensor
+        # (pre-allocation = faster)
+        self.grid_position_m = np.array([np.tile(np.arange(0, self.xsize * self.grid_size, self.grid_size)[:,None], (1, self.ysize)),
+                                         np.tile(np.arange(0, self.ysize * self.grid_size, self.grid_size)[:,None].T, (self.xsize, 1))])
+        # shape: (2, 102, 102) # todo why?
+        # Log-Probabilities to add or remove from the map
+        self.l_occ = np.log(0.65/0.35)
+        self.l_free = np.log(0.35/0.65)
 
-    p.stepSimulation()
-    # _, _, rgb, depth, seg = p.getCameraImage(320, 200, flags=flags)  # uncomment for updating every frame but slow
+    def update_map(self, pose, z):
+        dx = self.grid_position_m.copy() # A tensor of coordinates of all cells
+        dx[0, :, :] -= pose[0] # A matrix of all the x coordinates of the cell
+        dx[1, :, :] -= pose[1] # A matrix of all the y coordinates of the cell
+        # todo why pose[2]? is pose[2] theta? It must be.
+        theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) - pose[2] # matrix of all bearings from robot to cell
 
-    # import pdb;pdb.set_trace()
-    time.sleep(1/ 240)
+        # Wrap to +pi / - pi
+        theta_to_grid[theta_to_grid > np.pi] -= 2. * np.pi
+        theta_to_grid[theta_to_grid < -np.pi] += 2. * np.pi
+
+        dist_to_grid = scipy.linalg.norm(dx, axis=0) # matrix of L2 distance to all cells from robot
+
+        # For each laser beam
+        for z_i in z:
+            r = z_i[0] # range measured
+            b = z_i[1] # bearing measured
+
+            # Calculate which cells are measured free or occupied, so we know which cells to update
+            # Doing it this way is like a billion times faster than looping through each cell (because vectorized numpy is the only way to numpy)
+            free_mask = (np.abs(theta_to_grid - b) <= self.beta/2.0) & (dist_to_grid < (r - self.alpha / 2.0))
+            occ_mask = (np.abs(theta_to_grid - b) <= self.beta/2.0) & (np.abs(dist_to_grid - r) <= self.alpha / 2.0)
+
+            # Adjust the cells appropriately
+            self.log_prob_map[occ_mask] += self.l_occ
+            self.log_prob_map[free_mask] += self.l_free
+            # todo try the above with my original grid and find another way to do free and occ mask? e.g. bresenham
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+
+    cid = p.connect(p.SHARED_MEMORY)
+    if (cid < 0):
+        p.connect(p.GUI)
+
+    p.resetSimulation()
+    p.setGravity(0, 0, -9.8)
+    p.loadURDF("plane.urdf")
+
+    default_quat_orientation = p.getQuaternionFromEuler([0, 0, 0])
+    quat_orientation = p.getQuaternionFromEuler([0, 0, 3.14 / 2])
+
+    all_objects = [
+        {'urdf_fn': 'beer_bottle.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
+        {'urdf_fn': 'bowl.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
+        {'urdf_fn': 'plate.urdf', 'basePosition': [3.4, 1, 1.1], 'dynamic': True},
+        {'urdf_fn': 'glass.urdf', 'basePosition': [3.5, 1.3, 1.1], 'dynamic': True},
+        {'urdf_fn': 'knife.urdf', 'basePosition': [3.6, 1.7, 1.1], 'dynamic': True, 'globalScaling': 0.01},
+        {'urdf_fn': 'spoon.urdf', 'basePosition': [3.5, 1.2, 1.1], 'dynamic': True, 'globalScaling': 0.01},
+        {'urdf_fn': 'fork.urdf', 'basePosition': [3.4, 1.65, 1.1], 'dynamic': True, 'globalScaling': 1.0},
+        {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 0.7, 1.1], 'dynamic': True, 'globalScaling': 0.016},
+        {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 6, 1.5], 'dynamic': True, 'globalScaling': 0.016},
+        {'urdf_fn': 'banana.urdf', 'basePosition': [3.6, 2.3, 1.1], 'dynamic': True},
+        {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.5, 2.4, 1.1], 'dynamic': True, 'globalScaling': 0.01},
+        {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.45, 6.35, 1.5], 'dynamic': True, 'globalScaling': 0.01},
+        {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.4, 2, 1.1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
+        {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.6, 5.8, 1.55], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
+        {'urdf_fn': 'TeaCup.urdf', 'basePosition': [1.5, 5.8, 1.5], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
+        {'urdf_fn': 'sofa.urdf', 'basePosition': [0.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+        {'urdf_fn': 'table.urdf', 'basePosition': [1.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+        {'urdf_fn': 'table.urdf', 'basePosition': [3.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.5},
+        {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 9, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+        {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 4, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+        {'urdf_fn': 'bed.urdf', 'basePosition': [1.1, 7.8, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.7},
+        {'urdf_fn': 'nordic_floor_lamp_obj.urdf', 'basePosition': [1.5, 9, 1.3], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.01},
+        {'urdf_fn': 'kitchen_walls.urdf', 'dynamic': False},  # todo some link segmentation is black because https://github.com/bulletphysics/bullet3/issues/1631
+        {'urdf_fn': 'kitchen.urdf', 'basePosition': [0.1, 0.15, 0.1], 'dynamic': False}
+    ]
+
+    # obj_id_to_obj_name, obj_name_to_obj_id = load_all_urdfs()
+    # print('Time taken to load all objects and begin simulation: {:.2f}'.format(
+    #     time.time() - start_time))
+
+    # new_cmap = rand_cmap(100, type='bright', first_color_black=True, last_color_black=False, verbose=True)
+    # new_cmap = rand_cmap(100, type='bright', first_color_black=True, last_color_black=False, verbose=False)
+    # segLinkIndex = False
+    # print('Beginning physics simulation loop')
+    # for i in range(10000000):
+    #     keys = p.getKeyboardEvents()
+    #
+    #     if ord('d') in keys:
+    #         state = keys[ord('d')]
+    #         if (state & p.KEY_WAS_RELEASED):
+    #             segLinkIndex = 1 - segLinkIndex
+    #             # print("segLinkIndex=",segLinkIndex)
+    #             print(segLinkIndex)
+    #     if ord('p') in keys:
+    #         state = keys[ord('p')]
+    #         if (state & p.KEY_WAS_RELEASED):
+    #             create_point_cloud_and_occupancy_grid()
+    #     if ord('q') in keys:
+    #         state = keys[ord('q')]
+    #         if (state & p.KEY_WAS_RELEASED):
+    # todo store all here
+    #             break
+    #
+    #     flags = 0
+    #     if (segLinkIndex):
+    #         flags = p.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX
+    #
+    #     p.stepSimulation()
+    #     # _, _, rgb, depth, seg = p.getCameraImage(320, 200, flags=flags)  # uncomment for updating every frame but slow
+    #
+    #     # import pdb;pdb.set_trace()
+    #     time.sleep(1/ 240)
+
+    # todo move camera to right place at start. meh
+
+    # TODO take 1-3 lidar point cloud pictures automatically. And even save them and load and don't even run pybullet????
+    # todo do 1st image first
+
+    # todo need: state/pose each has: (x, y, theta (direction we are facing))
+    # todo need: measurements each has: (range, angle of beam)
+
+    # load matlab generated data (located at http://jamessjackson.com/files/index.php/s/sdKzy9nnqaVlKUe)
+    with open('beam_measurements_and_pose.pkl', 'rb') as f:
+        data = pickle.load(f)
+        state = data['pose']
+        measurements = data['beam_measurements']
+
+    # Define the parameters for the map.  (This is a 100x100m map with grid size 1x1m)
+    # grid_size = 1.0
+    # map = Map(int(100/grid_size), int(100/grid_size), grid_size)
+    grid_size = 0.1
+    # map = Map(int(60 / grid_size), int(60 / grid_size), grid_size)
+    map = Map(int(data['grid_xrange']), int(data['grid_yrange']), grid_size)
+
+    plt.ion() # enable real-time plotting
+    plt.figure(1) # create a plot
+    # for i in tqdm(range(len(state.T))):  # todo understand: transpose, so columns of state are (x, y, theta)
+    import pdb;pdb.set_trace()
+    # measurements = measurements.reshape(len(state), measurements.shape[0], measurements.shape[1]) # todo remove or not? make sure it isn't 1 when more than 1
+    for i in tqdm(range(len(state))):
+        # map.update_map(state[:, i], measurements[:, :, i].T) # update the map
+        map.update_map(state[i, :], measurements[i, :]) # update the map
+
+        # Real-Time Plotting
+        # (comment out these next lines to make it run super fast, matplotlib is painfully slow)
+        plt.clf()
+        # pose = state[:, i]
+        pose = state[i, :]
+        circle = plt.Circle((pose[1], pose[0]), radius=1.5, fc='blue')
+        plt.gca().add_patch(circle)
+        arrow = pose[0:2] + np.array([3.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
+                                                             [-np.sin(pose[2]), np.cos(pose[2])]]))  # todo what is this?
+        plt.plot([pose[1], arrow[1]], [pose[0], arrow[0]])  # todo why inverted?
+        # todo why is the arrow pointing the right way but everything else is in the wrong place?
+        # todo should y-axis be inverted?
+        # todo flip axes as well!?!?!?
+        # todo why so big?
+        # todo try thresholded version
+
+        probability_map = 1.0 - 1./(1. + np.exp(map.log_prob_map))
+        probability_map = np.swapaxes(probability_map, 0, 1)
+        probability_map = np.flip(probability_map, 1)  # todo is this even correct?
+        plt.imshow(probability_map, 'Greys')
+
+        plt.figure()
+        thresholded_map = np.zeros(probability_map.shape)
+        thresholded_map[probability_map > 0.7] = 1
+        plt.imshow(thresholded_map)
+        plt.pause(0.005)
+
+    # Final Plotting
+    plt.ioff()
+    plt.clf()
+    plt.imshow(1.0 - 1./(1.+np.exp(map.log_prob_map)), 'Greys') # This is probability
+    plt.imshow(map.log_prob_map, 'Greys') # log probabilities (looks really cool)
+    plt.show()
