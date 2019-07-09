@@ -21,6 +21,8 @@ from kitchen_utils import rand_cmap  # i hate pycharm
 
 
 def load_all_urdfs():
+    p.loadURDF("plane.urdf")
+
     all_obj_names_counter = Counter()
     for idx, object_spec in enumerate(all_objects):
         print('Loading urdf object with specification: {}'.format(object_spec))
@@ -85,6 +87,49 @@ def getRayFromTo(mouseX, mouseY):
     lenOrtho = math.sqrt(ortho[0] * ortho[0] + ortho[1] * ortho[1] + ortho[2] * ortho[2])
     alpha = math.atan(lenOrtho / farPlane)
     return rayFrom, rayTo, alpha
+
+def bresenham(start, end):
+    """
+    Implementation of Bresenham's line drawing algorithm
+    See en.wikipedia.org/wiki/Bresenham's_line_algorithm
+    Bresenham's Line Algorithm
+    Produces a np.array from start and end (original from roguebasin.com)
+    >>> points1 = bresenham((4, 4), (6, 10))
+    >>> print(points1)
+    np.array([[4,4], [4,5], [5,6], [5,7], [5,8], [6,9], [6,10]])
+    """
+    # setup initial conditions
+    x1, y1 = start
+    x2, y2 = end
+    dx = x2 - x1
+    dy = y2 - y1
+    is_steep = abs(dy) > abs(dx)  # determine how steep the line is
+    if is_steep:  # rotate line
+        x1, y1 = y1, x1
+        x2, y2 = y2, x2
+    swapped = False  # swap start and end points if necessary and store swap state
+    if x1 > x2:
+        x1, x2 = x2, x1
+        y1, y2 = y2, y1
+        swapped = True
+    dx = x2 - x1  # recalculate differentials
+    dy = y2 - y1  # recalculate differentials
+    error = int(dx / 2.0)  # calculate error
+    ystep = 1 if y1 < y2 else -1
+    # iterate over bounding box generating points between start and end
+    y = y1
+    points = []
+    for x in range(x1, x2 + 1):
+        coord = [y, x] if is_steep else (x, y)
+        points.append(coord)
+        error -= abs(dy)
+        if error < 0:
+            y += ystep
+            error += dx
+    if swapped:  # reverse the list if the coordinates were swapped
+        points.reverse()
+    points = np.array(points)
+    return points
 
 def create_point_cloud_and_occupancy_grid():
     start_of_point_cloud_calculation = time.time()
@@ -243,18 +288,18 @@ def append_pose_and_beam_measurements(camPos, camForward_xy, all_ball_x_y_locati
         range_of_beam = np.sqrt(np.sum((np.array((camPos[0], camPos[1])) -
                                         np.array((ball[0], ball[1]))) ** 2))
         angle_of_beam = math.atan2(ball[1] - camPos[1], ball[0] - camPos[0])  # todo we subtract later, should we do now? todo confirm right here
-        beam_measurements.append((range_of_beam, angle_of_beam))
-    beam_measurements = np.array(beam_measurements).reshape(1, len(beam_measurements),
-                                                            len(beam_measurements[0]))
+        beam_measurements.append((range_of_beam, angle_of_beam, ball[0], ball[1], ball[2]))
+    beam_measurements = np.array(beam_measurements) #.reshape(1, len(beam_measurements), len(beam_measurements[0]))
+    # todo add ball position to make certain things easier later on? Why try to fit in with other methods when I have the GT? Because of the real world? But in the real world I might have point cloud data?
 
-    import pdb;
-    pdb.set_trace()
+
+    # import pdb; pdb.set_trace()
     # state/pose. each has: (x, y, theta (direction we are facing))
     # pose = (camPos[0], camPos[1], math.atan2(camForward_xy[1] - camPos[1], camForward_xy[0] - camPos[0])) ## todo remove CamPos?!?!?!?!?! nah because camForward has it already
     # pose = np.array([(camPos[0], camPos[1], math.atan2(camPos[1], camPos[0]))])
     pose = np.array([(camPos[0], camPos[1], math.atan2(camForward_xy[1], camForward_xy[0]))])
 
-    all_beam_measurements.append(beam_measurements)
+    all_beam_measurements.append(beam_measurements)  # todo make not red
     all_poses.append(pose)
     # with open('beam_measurements_and_pose.pkl', 'wb') as f:
     #     pickle.dump(
@@ -270,7 +315,7 @@ def draw_figures(x_range, y_range, all_ball_x_y_locations_above_floor, camPos, c
     for ball in all_ball_x_y_locations_above_floor:
         ax.plot([camPos[0], ball[0]], [camPos[1], ball[1]], c='r', linewidth=0.2)
 
-    # import pdb;    pdb.set_trace()
+    # todo why is this grid camera position fine and the other isn't? Because:
     ax.plot([camPos[0], camForward_xy[0]], [camPos[1], camForward_xy[1]], c='blue', linewidth=2.0)  # todo make line segment. too long.
     ax.set_xticks(x_range)
     ax.set_yticks(y_range)
@@ -285,6 +330,11 @@ def draw_figures(x_range, y_range, all_ball_x_y_locations_above_floor, camPos, c
     ax2.set_yticklabels([round(y, 1) for y in y_range])
     plt.xticks(rotation=80)
     ax2.set_title('Occupancy Grid')
+    # ax2.scatter(camPos[0], camPos[1], color='r')  # this answered one question. todo remove once fixed below
+
+    cam_pos_grid_x, cam_pos_grid_y = int((camPos[0] + abs(x_range[0])) * 10), \
+                                     int((camPos[1] + abs(y_range[0])) * 10)
+    ax2.scatter(cam_pos_grid_x, grid.shape[0] - cam_pos_grid_y, color='r')
     ax2.imshow(grid, interpolation='none', cmap='gray')
 
     # fig.canvas.draw()
@@ -414,25 +464,59 @@ class Map():
 
             # Calculate which cells are measured free or occupied, so we know which cells to update
             # Doing it this way is like a billion times faster than looping through each cell (because vectorized numpy is the only way to numpy)
-            free_mask = (np.abs(theta_to_grid - b) <= self.beta/2.0) & (dist_to_grid < (r - self.alpha / 2.0))
-            occ_mask = (np.abs(theta_to_grid - b) <= self.beta/2.0) & (np.abs(dist_to_grid - r) <= self.alpha / 2.0)
+            # free_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (dist_to_grid < (r - self.alpha / 2.0))
+            # occ_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (np.abs(dist_to_grid - r) <= self.alpha / 2.0)
+            # # Adjust the cells appropriately
+            # self.log_prob_map[occ_mask] += self.l_occ
+            # self.log_prob_map[free_mask] += self.l_free
+            # # todo try the above with my original grid and find another way to do free and occ mask? e.g. bresenham
 
-            # Adjust the cells appropriately
-            self.log_prob_map[occ_mask] += self.l_occ
-            self.log_prob_map[free_mask] += self.l_free
-            # todo try the above with my original grid and find another way to do free and occ mask? e.g. bresenham
+            # Use actual x, y location of ball instead of range and bearing to calculate free-space
+            free_mask, occ_mask = [], []
+
+            ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size))
+            ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size))
+            pose_x_grid_pos = int(round(pose[0].item() / self.grid_size))  # todo why was it: centix = int(round(-minx / xyreso))
+            pose_y_grid_pos = int(round(pose[1].item() / self.grid_size))
+
+            # ix = int(round((pose[0] - minx) / xyreso))  # x coordinate of the occupied area
+            # iy = int(round((pose[1] - miny) / xyreso))  # y coordinate of the occupied area
+            # ix = int(round((ix - minx) / xyreso))  # attempt
+            # iy = int(round((iy - miny) / xyreso))
+            laser_beams = bresenham((pose_x_grid_pos, pose_y_grid_pos),
+                                    (ball_x_grid_pos, ball_y_grid_pos))  # line from the lidar to the occupied point
+            for laser_beam in laser_beams:
+                #     pmap[laser_beam[0]][laser_beam[1]] = 0.0  # free area 0.0
+                free_mask.append([laser_beam[0], laser_beam[1]])
+            occ_mask.append([ball_x_grid_pos, ball_y_grid_pos])  # todo others around it?
+            occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos])
+            occ_mask.append([ball_x_grid_pos, ball_y_grid_pos + 1])
+            occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos + 1])
+            # pmap[ix][iy] = 1.0  # occupied area 1.0
+            # pmap[ix + 1][iy] = 1.0  # extend the occupied area
+            # pmap[ix][iy + 1] = 1.0  # extend the occupied area
+            # pmap[ix + 1][iy + 1] = 1.0  # extend the occupied area
+
+            self.log_prob_map[[xy[0] for xy in occ_mask], [xy[1] for xy in occ_mask]] += self.l_occ
+            self.log_prob_map[[xy[0] for xy in free_mask], [xy[1] for xy in free_mask]] += self.l_free
+
+            # todo try flood fill as well?
+            # todo use similar to below. We need to add the minimum value and multiply by 10!>?!? Invert y-axis too.
+            # grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)
+            # grid[grid.shape[0] - grid_y, grid_x] = 1
+
+
 
 
 if __name__ == '__main__':
     start_time = time.time()
 
-    cid = p.connect(p.SHARED_MEMORY)
-    if (cid < 0):
-        p.connect(p.GUI)
-
-    p.resetSimulation()
-    p.setGravity(0, 0, -9.8)
-    p.loadURDF("plane.urdf")
+    # cid = p.connect(p.SHARED_MEMORY)
+    # if (cid < 0):
+    #     p.connect(p.GUI)
+    #
+    # p.resetSimulation()
+    # p.setGravity(0, 0, -9.8)
 
     default_quat_orientation = p.getQuaternionFromEuler([0, 0, 0])
     quat_orientation = p.getQuaternionFromEuler([0, 0, 3.14 / 2])
@@ -464,6 +548,7 @@ if __name__ == '__main__':
         {'urdf_fn': 'kitchen.urdf', 'basePosition': [0.1, 0.15, 0.1], 'dynamic': False}
     ]
 
+    # todo find better way of debugging maps and organising code in general. Instead of commenting this out all the time e.g. different file, user input
     # obj_id_to_obj_name, obj_name_to_obj_id = load_all_urdfs()
     # print('Time taken to load all objects and begin simulation: {:.2f}'.format(
     #     time.time() - start_time))
@@ -490,16 +575,13 @@ if __name__ == '__main__':
     #     if ord('q') in keys:
     #         state = keys[ord('q')]
     #         if (state & p.KEY_WAS_RELEASED):
-    #             # todo ValueError: all the input array dimensions except for the concatenation axis must match exactly
-    #             # fixes: list sequence or fixed number of lasers. fixed sequence it is.
     #             if all_beam_measurements:
     #                 with open('beam_measurements_and_pose.pkl', 'wb') as f:
     #                     pickle.dump(
     #                         {'beam_measurements': all_beam_measurements,
-    #                         # 'beam_measurements': np.concatenate(all_beam_measurements),
     #                          'pose': np.concatenate(all_poses),
-    #                          'grid_xrange': len(x_range),
-    #                          'grid_yrange': len(y_range)}, f)
+    #                          'grid_xrange': x_range,
+    #                          'grid_yrange': y_range}, f)
     #             break
     #
     #     flags = 0
@@ -509,12 +591,10 @@ if __name__ == '__main__':
     #     p.stepSimulation()
     #     # _, _, rgb, depth, seg = p.getCameraImage(320, 200, flags=flags)  # uncomment for updating every frame but slow
     #
-    #     # import pdb;pdb.set_trace()
     #     time.sleep(1 / 240)
 
     # todo move camera to right place at start. meh, was hard to do but shouldn't be
     # TODO take 1-3 lidar point cloud pictures automatically. And even save them and load and don't even run pybullet????
-    # todo do 1st image first
 
     # load matlab generated data (located at http://jamessjackson.com/files/index.php/s/sdKzy9nnqaVlKUe)
     with open('beam_measurements_and_pose.pkl', 'rb') as f:
@@ -523,6 +603,9 @@ if __name__ == '__main__':
         # measurements each has: (range, angle of beam)
         state = data['pose']
         measurements = data['beam_measurements']
+        x_range = data['grid_xrange']
+        y_range = data['grid_yrange']
+        print('x_range: {}. y_range: {}'.format(x_range, y_range))
         # todo could store the old grid too and use that
         # todo keep flipping and analysing the new grid. Confirm angles correct, confirm points correct, confirm x and y axis, borders (not 30) etc
 
@@ -531,56 +614,79 @@ if __name__ == '__main__':
     # map = Map(int(100/grid_size), int(100/grid_size), grid_size)
     grid_size = 0.1
     # map = Map(int(60 / grid_size), int(60 / grid_size), grid_size)
-    map = Map(int(data['grid_xrange']), int(data['grid_yrange']), grid_size)
+    map = Map(int(len(x_range)), int(len(y_range)), grid_size)  # todo invert y-axis, x-axis or not?!!?!?
 
     plt.ion() # enable real-time plotting
     plt.figure(1) # create a plot
     # for i in tqdm(range(len(state.T))):  # transpose, so columns of state are (x, y, theta)
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     for i in tqdm(range(len(state))):
         # map.update_map(state[:, i], measurements[:, :, i].T) # update the map
         # map.update_map(state[i, :], measurements[i, :]) # update the map
-        map.update_map(state[i, :], measurements[i][0]) # update the map  # todo instead of [0] do:
+        map.update_map(state[i, :], measurements[i])
 
         # Real-Time Plotting
         # (comment out these next lines to make it run super fast, matplotlib is painfully slow)
         plt.clf()
         # pose = state[:, i]
         pose = state[i, :]
-        circle = plt.Circle((pose[1], pose[0]), radius=1.5, fc='blue')
+        cam_pos_grid_x, cam_pos_grid_y = int((state[i, 0] + abs(x_range[0])) * 10), \
+                                         int((state[i, 1] + abs(y_range[0])) * 10)
+
+        # circle = plt.Circle((pose[1], pose[0]), radius=1.5, fc='blue')
+        # circle = plt.Circle((map.log_prob_map.shape[1] - cam_pos_grid_y, cam_pos_grid_x),
+        circle = plt.Circle((cam_pos_grid_x, map.log_prob_map.shape[1] - cam_pos_grid_y),
+                            radius=1.5, fc='blue')
         plt.gca().add_patch(circle)
+        # todo move arrow
         arrow = pose[0:2] + np.array([3.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
-                                                             [-np.sin(pose[2]), np.cos(pose[2])]]))  # todo what is this?
+                                                             [-np.sin(pose[2]), np.cos(pose[2])]]))
         plt.plot([pose[1], arrow[1]], [pose[0], arrow[0]])  # todo why inverted?
         # todo why is the arrow pointing the right way but everything else is in the wrong place?
         # todo should y-axis be inverted?
         # todo flip axes as well!?!?!?
         # todo why so big?
         # todo try thresholded version
+        # todo how to set xticks here?
 
-        probability_map = 1.0 - 1./(1. + np.exp(map.log_prob_map))
-        # probability_map = np.swapaxes(probability_map, 0, 1)  # todo. was done because my original grid was y, x
+        probability_map = 1.0 - 1. / (1. + np.exp(map.log_prob_map))
+        probability_map = np.swapaxes(probability_map, 0, 1)  # todo. was done because my original grid was y, x
         # probability_map = np.flip(probability_map, 1)  # todo is this even correct?
         plt.imshow(probability_map, 'Greys')
+        plt.title('Probability map: {}'.format(i))
+        plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
+        plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
+        # plt.xticklabels([round(x, 1) for x in x_range])
+        # plt.yticklabels([round(y, 1) for y in y_range])
 
         plt.figure()
-        thresholded_map = np.zeros(probability_map.shape)
-        thresholded_map[probability_map > 0.7] = 1
+        # thresholded_map = np.zeros(probability_map.shape)
+        # thresholded_map[probability_map > 0.7] = 1
+        thresholded_map = np.ones(probability_map.shape)
+        thresholded_map[probability_map > 0.7] = 0
         plt.imshow(thresholded_map)
+        plt.title('Thresholded map: {}'.format(i))
+        plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
+        plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
         plt.pause(0.005)
+        # plt.show()
+        # import pdb;pdb.set_trace()
 
-    # import pdb;pdb.set_trace()
+    # plt.show()
     # Final Plotting
+
+    plt.figure()
     plt.ioff()
     plt.clf()
-    plt.imshow(1.0 - 1./(1.+np.exp(map.log_prob_map)), 'Greys') # This is probability
-    plt.imshow(map.log_prob_map, 'Greys') # log probabilities (looks really cool)
+    plt.title('Final figure')
+    plt.imshow(np.swapaxes(1.0 - 1./(1.+np.exp(map.log_prob_map)), 0, 1), 'Greys') # This is probability
+    # plt.imshow(map.log_prob_map, 'Greys') # log probabilities (looks really cool)
     plt.show()
-
+    # import pdb; pdb.set_trace()
 
 
     sys.exit()
-
+    # todo remove below or do something with it e.g. into another file or jupy notebook
     ####################
     ####################
     ####################
@@ -590,49 +696,6 @@ if __name__ == '__main__':
     ####################
     # lidar_to_grid_map.py
     EXTEND_AREA = 1.0
-    def bresenham(start, end):
-        """
-        Implementation of Bresenham's line drawing algorithm
-        See en.wikipedia.org/wiki/Bresenham's_line_algorithm
-        Bresenham's Line Algorithm
-        Produces a np.array from start and end (original from roguebasin.com)
-        >>> points1 = bresenham((4, 4), (6, 10))
-        >>> print(points1)
-        np.array([[4,4], [4,5], [5,6], [5,7], [5,8], [6,9], [6,10]])
-        """
-        # setup initial conditions
-        x1, y1 = start
-        x2, y2 = end
-        dx = x2 - x1
-        dy = y2 - y1
-        is_steep = abs(dy) > abs(dx)  # determine how steep the line is
-        if is_steep:  # rotate line
-            x1, y1 = y1, x1
-            x2, y2 = y2, x2
-        swapped = False  # swap start and end points if necessary and store swap state
-        if x1 > x2:
-            x1, x2 = x2, x1
-            y1, y2 = y2, y1
-            swapped = True
-        dx = x2 - x1  # recalculate differentials
-        dy = y2 - y1  # recalculate differentials
-        error = int(dx / 2.0)  # calculate error
-        ystep = 1 if y1 < y2 else -1
-        # iterate over bounding box generating points between start and end
-        y = y1
-        points = []
-        for x in range(x1, x2 + 1):
-            coord = [y, x] if is_steep else (x, y)
-            points.append(coord)
-            error -= abs(dy)
-            if error < 0:
-                y += ystep
-                error += dx
-        if swapped:  # reverse the list if the coordinates were swapped
-            points.reverse()
-        points = np.array(points)
-        return points
-
 
     def calc_grid_map_config(ox, oy, xyreso):
         """
