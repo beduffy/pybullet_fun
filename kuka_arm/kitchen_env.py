@@ -245,7 +245,7 @@ def create_point_cloud_and_occupancy_grid():
     # y_range = np.arange(math.floor(ax.get_ylim()[0]), math.ceil(ax.get_ylim()[1]), 0.1)
     all_x = [ball[0] for ball in all_ball_x_y_locations_above_floor]
     all_y = [ball[1] for ball in all_ball_x_y_locations_above_floor]
-    global x_range, y_range
+    global x_range, y_range  # todo should really update across all poses so that everything fits in. Naturally growing.
     x_range = np.arange(math.floor(min(all_x) - 1), math.ceil(max(all_x)), 0.1)  # todo add border!?!?!
     y_range = np.arange(math.floor(min(all_y) - 1), math.ceil(max(all_y)), 0.1)
 
@@ -418,8 +418,11 @@ class Map():
     """
     Adapted from: https://gist.github.com/superjax/33151f018407244cb61402e094099c1d
     """
-    def __init__(self, xsize, ysize, grid_size):
-        self.border = 2
+    # def __init__(self, xsize, ysize, grid_size):
+    def __init__(self, xsize, ysize, grid_size, x_range, y_range,
+                 measurement_model='laser_width_inverse_range_sensor_model'):
+        # self.border = 2
+        # self.border = 5  # todo messes up a few things
         self.border = 0
         self.xsize = xsize + self.border  # Add extra cells for the borders
         self.ysize = ysize + self.border
@@ -434,12 +437,15 @@ class Map():
         # (pre-allocation = faster)
         self.grid_position_m = np.array([np.tile(np.arange(0, self.xsize * self.grid_size, self.grid_size)[:,None], (1, self.ysize)),
                                          np.tile(np.arange(0, self.ysize * self.grid_size, self.grid_size)[:,None].T, (self.xsize, 1))])
+        # todo how to naturally extend the map?
         # shape: (2, 102, 102) # todo why?
         # Log-Probabilities to add or remove from the map
         self.l_occ = np.log(0.65/0.35)
         self.l_free = np.log(0.35/0.65)
 
-        self.laser_beam_width_measurement_model = False
+        self.measurement_model = measurement_model
+        # self.measurement_model = 'bresenham_ray_tracing'  # todo why does this cause a big gap? Are we going through walls?  # todo debug
+        self.measurement_model = 'my_algorithm'
 
     def update_map(self, pose, z):
         dx = self.grid_position_m.copy() # A tensor of coordinates of all cells
@@ -449,7 +455,7 @@ class Map():
         # theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) - pose[2] # matrix of all bearings from robot to cell
         theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) # matrix of all bearings from robot to cell
 
-        # todo is the bug above or below? above. removing - pose[2] made it horizantal as it should be?
+        # todo is the bug above or below? above. removing - pose[2] made it horizontal as it should be?
         # Wrap to +pi / - pi
         theta_to_grid[theta_to_grid > np.pi] -= 2. * np.pi
         theta_to_grid[theta_to_grid < -np.pi] += 2. * np.pi
@@ -461,21 +467,25 @@ class Map():
             r = z_i[0] # range measured
             b = z_i[1] # bearing measured
 
-            if self.laser_beam_width_measurement_model:
-
+            if self.measurement_model == 'laser_width_inverse_range_sensor_model':
+                # Check table 9.2 in probabilistic robotics
+                # todo y-axis beam angle seems inverted?
                 # Calculate which cells are measured free or occupied, so we know which cells to update
                 # Doing it this way is like a billion times faster than looping through each cell (because vectorized numpy is the only way to numpy)
-                free_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (dist_to_grid < (r - self.alpha / 2.0))
-                occ_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (np.abs(dist_to_grid - r) <= self.alpha / 2.0)
+                free_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (dist_to_grid < (r - self.alpha / 2.0))  # todo play around with this and fully understand
+                occ_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (np.abs(dist_to_grid - r) <= self.alpha / 2.0)  # todo don't remove close things
                 # Adjust the cells appropriately
-                self.log_prob_map[occ_mask] += self.l_occ
-                self.log_prob_map[free_mask] += self.l_free
-                # # todo try the above with my original grid and find another way to do free and occ mask? e.g. bresenham
-
-            else:  # bresenham ray tracing line measurement model
-
+                # todo add x_range[0] and y_range[0] to both masks? It can't be done?
+                # todo plot free and occ mask
+                # import pdb;pdb.set_trace()  # grid = np.zeros_like(self.log_prob_map); grid[occ_mask] = 1.; grid[free_mask] = 0.5; plt.figure(); plt.imshow(grid, 'Greys', origin='lower'); plt.show()
+                self.log_prob_map[occ_mask] += self.l_occ  # todo is this doing a form of ray tracing?
+                self.log_prob_map[free_mask] += self.l_free  # ahhhhh this probably doesn't calculate the full frustum. It probably does it per laser.
+            elif self.measurement_model == 'bresenham_ray_tracing':  # bresenham ray tracing line measurement model
+                # https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+                # todo fix the big gap here!!!!!
                 # Use actual x, y location of ball instead of range and bearing to calculate free-space
                 free_mask, occ_mask = [], []
+                # todo do we need to add x_range[0] and flip y-axis here? First flip y-axis later. Nah only in visualisation
                 ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size))
                 ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size))
                 pose_x_grid_pos = int(round(pose[0].item() / self.grid_size))  # todo why was it: centix = int(round(-minx / xyreso))
@@ -491,7 +501,7 @@ class Map():
                     #     pmap[laser_beam[0]][laser_beam[1]] = 0.0  # free area 0.0
                     free_mask.append([laser_beam[0], laser_beam[1]])
                 occ_mask.append([ball_x_grid_pos, ball_y_grid_pos])  # todo others around it?
-                occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos])
+                occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos])  # todo good idea?
                 occ_mask.append([ball_x_grid_pos, ball_y_grid_pos + 1])
                 occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos + 1])
                 # pmap[ix][iy] = 1.0  # occupied area 1.0
@@ -503,11 +513,18 @@ class Map():
                 self.log_prob_map[[xy[0] for xy in free_mask], [xy[1] for xy in free_mask]] += self.l_free
 
                 # todo try flood fill as well?
-                # todo use similar to below. We need to add the minimum value and multiply by 10!>?!? Invert y-axis too.
+            elif self.measurement_model == 'my_algorithm':
+                # For each ball position, add log odds occupied
+                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size))
+                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size))
+                self.log_prob_map[ball_x_grid_pos, ball_y_grid_pos] += self.l_occ
+                # todo bresenham bug is here too. Fix both!
+                # import pdb;pdb.set_trace()
+
+                # todo We need to add the minimum value and multiply by 10!>?!? Invert y-axis too.
+                # todo is this why we begin at -2.0?
                 # grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)
-                # grid[grid.shape[0] - grid_y, grid_x] = 1
-
-
+                # grid[grid.shape[0] - grid_y, grid_x] = 1  # todo occ_mask instead
 
 
 if __name__ == '__main__':
@@ -614,79 +631,72 @@ if __name__ == '__main__':
     # Define the parameters for the map.  (This is a 60x60m map with grid size 0.1x0.1m)
     grid_size = 0.1
     # map = Map(int(60 / grid_size), int(60 / grid_size), grid_size)
-    map = Map(int(len(x_range)), int(len(y_range)), grid_size)  # todo invert y-axis and x-axis here or not?!!?!?
+    map = Map(int(len(x_range)), int(len(y_range)), grid_size, x_range, y_range)
 
     # mismatch between real 3d space conversion to 2d top down space to gridspace
+    # todo understand what can stay in the same space and what conversions need to be done visualisation
     # todo what I want on a high level:
-    # todo: 1. the circle of pose correct so I can debug better. Work with only 1 image first
-    # todo: 2. the right map size with axes and proper conversion from 2D top down space to grid space.
-    # todo: 3. aggregate two maps correctly
+    # todo: 1. the circle of pose correct so I can debug better. Work with only 1 image first. Is correct but will it stay correct?
+    # todo: 2. the right map size with axes and proper conversion from 2D top down space to grid space. Half done but axes...
+    # todo: 3. aggregate two maps correctly. Kinda there.
 
-    plt.ion() # enable real-time plotting
-    plt.figure(1) # create a plot  # todo remove 1?
+    # todo. Wait every single one of my axes in all the charts are wrong. All I ever wanted though was for 0, 0 to be the corner of the house?
+    # todo end goal would be to animate 3-20+ viewpoints and slowly build up a map
+    # todo create pybullet maze procedurally and use it to test mapping. First test multiple viewpoints in our current house of course
+
+    # plt.ion() # enable real-time plotting  # todo might wanna keep for animation
+    # plt.figure(1) # create a plot  # todo remove 1?
+    # import pdb; pdb.set_trace()
     for i in tqdm(range(len(state))):
         map.update_map(state[i, :], measurements[i])  # todo debug bresenham
-        import pdb; pdb.set_trace()
+        # todo why is there stuff at the bottom of -2.0?
 
+        plt.figure()
         # Real-Time Plotting
         # (comment out these next lines to make it run super fast, matplotlib is painfully slow)
-        # plt.clf()  # todo no point of many figures if you do this?
         pose = state[i, :]
-        cam_pos_grid_x, cam_pos_grid_y = int((pose[0] + abs(x_range[0])) * 10), \
-                                         int((pose[1] + abs(y_range[0])) * 10)  # todo each image will have different x and y range. Solution: just make big map?
-        # todo border will also affect this! Removed for now
+        # todo each image will have different x and y range. Solution: just make big map?
+        cam_pos_grid_x, cam_pos_grid_y = int(round(pose[0] / grid_size)), \
+                                         int(round(pose[1] / grid_size))
+        # todo border will also affect this! Removed for now. Add + border above.
 
-
-        # circle = plt.Circle((pose[1], pose[0]), radius=1.5, fc='blue')
-        # circle = plt.Circle((map.log_prob_map.shape[1] - cam_pos_grid_y, cam_pos_grid_x),
-        # circle = plt.Circle((map.border + cam_pos_grid_x, map.border + map.log_prob_map.shape[1] - cam_pos_grid_y),
-        circle = plt.Circle((cam_pos_grid_x - map.border, map.log_prob_map.shape[1] - cam_pos_grid_y - map.border),
-                            radius=1.5, fc='blue')
+        circle_x_pos, circle_y_pos = cam_pos_grid_x + map.border, cam_pos_grid_y + map.border
+        print('pose[0:2]: {}. circle_x_pos: {} circle_y_pos: {}'.format(pose[0:2], circle_x_pos,
+                                                                        circle_y_pos))
+        circle = plt.Circle((circle_x_pos, circle_y_pos),
+                            radius=1.5, fc='blue')  # todo try without imshow and xticks below (how does imshow affect it anyway?)
         plt.gca().add_patch(circle)
-        # todo move arrow
-        arrow = pose[0:2] + np.array([3.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
-                                                             [-np.sin(pose[2]), np.cos(pose[2])]]))
-        plt.plot([pose[1], arrow[1]], [pose[0], arrow[0]])  # todo why inverted?
-        # todo why is the arrow pointing the right way but everything else is in the wrong place?
-        # todo should y-axis be inverted?
-        # todo flip axes as well!?!?!?
-        # todo why so big?
-        # todo try thresholded version
-        # todo how to set xticks here?
+        # todo move/fix arrow
+        # arrow = pose[0:2] + np.array([3.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
+        # arrow = np.array([cam_pos_grid_x, cam_pos_grid_y]) + np.array([3.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
+        # arrow = np.array([cam_pos_grid_x, cam_pos_grid_y]) + np.array([0.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
+        #                                                      [-np.sin(pose[2]), np.cos(pose[2])]]))  # todo inverted inverted rotations?
+        # # plt.plot([pose[1], arrow[1]], [pose[0], arrow[0]])  # todo why inverted?
+        # plt.plot([cam_pos_grid_y, arrow[1]], [cam_pos_grid_x, arrow[0]])  # todo why inverted?
 
         probability_map = 1.0 - 1. / (1. + np.exp(map.log_prob_map))
-        # probability_map = np.swapaxes(probability_map, 0, 1)  # todo. was done because my original grid was y, x
-        probability_map = probability_map.T
-        # probability_map = np.flip(probability_map, 1)  # todo is this even correct?
-        plt.imshow(probability_map, 'Greys')
+        probability_map = probability_map.T  # x, y -> y, x
+        plt.imshow(probability_map, 'Greys', origin='lower')  # todo how does origin lower affect the circle? not at all? Wait it does affect it!
         plt.title('Probability map: {}'.format(i))
-        plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
-        plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
-        # plt.xticklabels([round(x, 1) for x in x_range])
-        # plt.yticklabels([round(y, 1) for y in y_range])
+        # todo in my original grid y-axis went from top to bottom -2.0 to 4.9 but it covered everything. Why is there a gap?
+        plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])  # todo y ticks are inverted?
+        plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])  # todo x + y ticks are all wrong. 0, 0 is not the corner of the map
+        plt.xticks(rotation=90)
 
         plt.figure()
         thresholded_map = np.zeros(probability_map.shape)
-        thresholded_map[probability_map > 0.7] = 1 # todo do black and white
-        # thresholded_map = np.ones(probability_map.shape)
-        # thresholded_map[probability_map > 0.7] = 0
-        plt.imshow(thresholded_map, cmap='gray')
+        thresholded_map[probability_map > 0.7] = 1
+        plt.imshow(thresholded_map, cmap='gray', origin='lower')
         plt.title('Thresholded map: {}'.format(i))
         plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
         plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
+        plt.xticks(rotation=90)
         plt.pause(0.005)
-        # plt.show()
-        # import pdb;pdb.set_trace()
-        # break
 
-    # plt.show()
     # Final Plotting
-
-    plt.figure()
-    plt.ioff()
-    plt.clf()
-    plt.title('Final figure')
-    plt.imshow(np.swapaxes(1.0 - 1./(1.+np.exp(map.log_prob_map)), 0, 1), 'Greys') # This is probability
-    # plt.imshow(map.log_prob_map, 'Greys') # log probabilities (looks really cool)
+    # plt.figure()
+    # plt.ioff()
+    # plt.clf()
+    # plt.title('Final figure')
+    # plt.imshow(np.swapaxes(1.0 - 1./(1.+np.exp(map.log_prob_map)), 0, 1), 'Greys') # This is probability  # todo keep eventually
     plt.show()
-    # import pdb; pdb.set_trace()
