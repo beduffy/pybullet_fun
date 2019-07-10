@@ -246,7 +246,7 @@ def create_point_cloud_and_occupancy_grid():
     all_x = [ball[0] for ball in all_ball_x_y_locations_above_floor]
     all_y = [ball[1] for ball in all_ball_x_y_locations_above_floor]
     global x_range, y_range
-    x_range = np.arange(math.floor(min(all_x) - 1), math.ceil(max(all_x)), 0.1)
+    x_range = np.arange(math.floor(min(all_x) - 1), math.ceil(max(all_x)), 0.1)  # todo add border!?!?!
     y_range = np.arange(math.floor(min(all_y) - 1), math.ceil(max(all_y)), 0.1)
 
     def set_closest_occupancy_grid(ball):
@@ -315,7 +315,6 @@ def draw_figures(x_range, y_range, all_ball_x_y_locations_above_floor, camPos, c
     for ball in all_ball_x_y_locations_above_floor:
         ax.plot([camPos[0], ball[0]], [camPos[1], ball[1]], c='r', linewidth=0.2)
 
-    # todo why is this grid camera position fine and the other isn't? Because:
     ax.plot([camPos[0], camForward_xy[0]], [camPos[1], camForward_xy[1]], c='blue', linewidth=2.0)  # todo make line segment. too long.
     ax.set_xticks(x_range)
     ax.set_yticks(y_range)
@@ -330,8 +329,6 @@ def draw_figures(x_range, y_range, all_ball_x_y_locations_above_floor, camPos, c
     ax2.set_yticklabels([round(y, 1) for y in y_range])
     plt.xticks(rotation=80)
     ax2.set_title('Occupancy Grid')
-    # ax2.scatter(camPos[0], camPos[1], color='r')  # this answered one question. todo remove once fixed below
-
     cam_pos_grid_x, cam_pos_grid_y = int((camPos[0] + abs(x_range[0])) * 10), \
                                      int((camPos[1] + abs(y_range[0])) * 10)
     ax2.scatter(cam_pos_grid_x, grid.shape[0] - cam_pos_grid_y, color='r')
@@ -422,10 +419,10 @@ class Map():
     Adapted from: https://gist.github.com/superjax/33151f018407244cb61402e094099c1d
     """
     def __init__(self, xsize, ysize, grid_size):
-        self.xsize = xsize + 2 # Add extra cells for the borders
-        self.ysize = ysize + 2
-        # self.xsize = xsize + 30  # Add extra cells for the borders # todo good idea or not?
-        # self.ysize = ysize + 30  # looks better without
+        self.border = 2
+        self.border = 0
+        self.xsize = xsize + self.border  # Add extra cells for the borders
+        self.ysize = ysize + self.border
         self.grid_size = grid_size # save this off for future use
         self.log_prob_map = np.zeros((self.xsize, self.ysize)) # set all to zero
 
@@ -441,6 +438,8 @@ class Map():
         # Log-Probabilities to add or remove from the map
         self.l_occ = np.log(0.65/0.35)
         self.l_free = np.log(0.35/0.65)
+
+        self.laser_beam_width_measurement_model = False
 
     def update_map(self, pose, z):
         dx = self.grid_position_m.copy() # A tensor of coordinates of all cells
@@ -462,48 +461,51 @@ class Map():
             r = z_i[0] # range measured
             b = z_i[1] # bearing measured
 
-            # Calculate which cells are measured free or occupied, so we know which cells to update
-            # Doing it this way is like a billion times faster than looping through each cell (because vectorized numpy is the only way to numpy)
-            # free_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (dist_to_grid < (r - self.alpha / 2.0))
-            # occ_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (np.abs(dist_to_grid - r) <= self.alpha / 2.0)
-            # # Adjust the cells appropriately
-            # self.log_prob_map[occ_mask] += self.l_occ
-            # self.log_prob_map[free_mask] += self.l_free
-            # # todo try the above with my original grid and find another way to do free and occ mask? e.g. bresenham
+            if self.laser_beam_width_measurement_model:
 
-            # Use actual x, y location of ball instead of range and bearing to calculate free-space
-            free_mask, occ_mask = [], []
+                # Calculate which cells are measured free or occupied, so we know which cells to update
+                # Doing it this way is like a billion times faster than looping through each cell (because vectorized numpy is the only way to numpy)
+                free_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (dist_to_grid < (r - self.alpha / 2.0))
+                occ_mask = (np.abs(theta_to_grid - b) <= self.beta / 2.0) & (np.abs(dist_to_grid - r) <= self.alpha / 2.0)
+                # Adjust the cells appropriately
+                self.log_prob_map[occ_mask] += self.l_occ
+                self.log_prob_map[free_mask] += self.l_free
+                # # todo try the above with my original grid and find another way to do free and occ mask? e.g. bresenham
 
-            ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size))
-            ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size))
-            pose_x_grid_pos = int(round(pose[0].item() / self.grid_size))  # todo why was it: centix = int(round(-minx / xyreso))
-            pose_y_grid_pos = int(round(pose[1].item() / self.grid_size))
+            else:  # bresenham ray tracing line measurement model
 
-            # ix = int(round((pose[0] - minx) / xyreso))  # x coordinate of the occupied area
-            # iy = int(round((pose[1] - miny) / xyreso))  # y coordinate of the occupied area
-            # ix = int(round((ix - minx) / xyreso))  # attempt
-            # iy = int(round((iy - miny) / xyreso))
-            laser_beams = bresenham((pose_x_grid_pos, pose_y_grid_pos),
-                                    (ball_x_grid_pos, ball_y_grid_pos))  # line from the lidar to the occupied point
-            for laser_beam in laser_beams:
-                #     pmap[laser_beam[0]][laser_beam[1]] = 0.0  # free area 0.0
-                free_mask.append([laser_beam[0], laser_beam[1]])
-            occ_mask.append([ball_x_grid_pos, ball_y_grid_pos])  # todo others around it?
-            occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos])
-            occ_mask.append([ball_x_grid_pos, ball_y_grid_pos + 1])
-            occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos + 1])
-            # pmap[ix][iy] = 1.0  # occupied area 1.0
-            # pmap[ix + 1][iy] = 1.0  # extend the occupied area
-            # pmap[ix][iy + 1] = 1.0  # extend the occupied area
-            # pmap[ix + 1][iy + 1] = 1.0  # extend the occupied area
+                # Use actual x, y location of ball instead of range and bearing to calculate free-space
+                free_mask, occ_mask = [], []
+                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size))
+                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size))
+                pose_x_grid_pos = int(round(pose[0].item() / self.grid_size))  # todo why was it: centix = int(round(-minx / xyreso))
+                pose_y_grid_pos = int(round(pose[1].item() / self.grid_size))
 
-            self.log_prob_map[[xy[0] for xy in occ_mask], [xy[1] for xy in occ_mask]] += self.l_occ
-            self.log_prob_map[[xy[0] for xy in free_mask], [xy[1] for xy in free_mask]] += self.l_free
+                # ix = int(round((pose[0] - minx) / xyreso))  # x coordinate of the occupied area
+                # iy = int(round((pose[1] - miny) / xyreso))  # y coordinate of the occupied area
+                # ix = int(round((ix - minx) / xyreso))  # attempt
+                # iy = int(round((iy - miny) / xyreso))
+                laser_beams = bresenham((pose_x_grid_pos, pose_y_grid_pos),
+                                        (ball_x_grid_pos, ball_y_grid_pos))  # line from the lidar to the occupied point
+                for laser_beam in laser_beams:
+                    #     pmap[laser_beam[0]][laser_beam[1]] = 0.0  # free area 0.0
+                    free_mask.append([laser_beam[0], laser_beam[1]])
+                occ_mask.append([ball_x_grid_pos, ball_y_grid_pos])  # todo others around it?
+                occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos])
+                occ_mask.append([ball_x_grid_pos, ball_y_grid_pos + 1])
+                occ_mask.append([ball_x_grid_pos + 1, ball_y_grid_pos + 1])
+                # pmap[ix][iy] = 1.0  # occupied area 1.0
+                # pmap[ix + 1][iy] = 1.0  # extend the occupied area
+                # pmap[ix][iy + 1] = 1.0  # extend the occupied area
+                # pmap[ix + 1][iy + 1] = 1.0  # extend the occupied area
 
-            # todo try flood fill as well?
-            # todo use similar to below. We need to add the minimum value and multiply by 10!>?!? Invert y-axis too.
-            # grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)
-            # grid[grid.shape[0] - grid_y, grid_x] = 1
+                self.log_prob_map[[xy[0] for xy in occ_mask], [xy[1] for xy in occ_mask]] += self.l_occ
+                self.log_prob_map[[xy[0] for xy in free_mask], [xy[1] for xy in free_mask]] += self.l_free
+
+                # todo try flood fill as well?
+                # todo use similar to below. We need to add the minimum value and multiply by 10!>?!? Invert y-axis too.
+                # grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)
+                # grid[grid.shape[0] - grid_y, grid_x] = 1
 
 
 
@@ -596,7 +598,7 @@ if __name__ == '__main__':
     # todo move camera to right place at start. meh, was hard to do but shouldn't be
     # TODO take 1-3 lidar point cloud pictures automatically. And even save them and load and don't even run pybullet????
 
-    # load matlab generated data (located at http://jamessjackson.com/files/index.php/s/sdKzy9nnqaVlKUe)
+    # load data from multiple measurements taken from pressing p key.
     with open('beam_measurements_and_pose.pkl', 'rb') as f:
         data = pickle.load(f)
         # state/pose each has: (x, y, theta (direction we are facing))
@@ -609,33 +611,36 @@ if __name__ == '__main__':
         # todo could store the old grid too and use that
         # todo keep flipping and analysing the new grid. Confirm angles correct, confirm points correct, confirm x and y axis, borders (not 30) etc
 
-    # Define the parameters for the map.  (This is a 100x100m map with grid size 1x1m)
-    # grid_size = 1.0
-    # map = Map(int(100/grid_size), int(100/grid_size), grid_size)
+    # Define the parameters for the map.  (This is a 60x60m map with grid size 0.1x0.1m)
     grid_size = 0.1
     # map = Map(int(60 / grid_size), int(60 / grid_size), grid_size)
-    map = Map(int(len(x_range)), int(len(y_range)), grid_size)  # todo invert y-axis, x-axis or not?!!?!?
+    map = Map(int(len(x_range)), int(len(y_range)), grid_size)  # todo invert y-axis and x-axis here or not?!!?!?
+
+    # mismatch between real 3d space conversion to 2d top down space to gridspace
+    # todo what I want on a high level:
+    # todo: 1. the circle of pose correct so I can debug better. Work with only 1 image first
+    # todo: 2. the right map size with axes and proper conversion from 2D top down space to grid space.
+    # todo: 3. aggregate two maps correctly
 
     plt.ion() # enable real-time plotting
-    plt.figure(1) # create a plot
-    # for i in tqdm(range(len(state.T))):  # transpose, so columns of state are (x, y, theta)
-    # import pdb;pdb.set_trace()
+    plt.figure(1) # create a plot  # todo remove 1?
     for i in tqdm(range(len(state))):
-        # map.update_map(state[:, i], measurements[:, :, i].T) # update the map
-        # map.update_map(state[i, :], measurements[i, :]) # update the map
-        map.update_map(state[i, :], measurements[i])
+        map.update_map(state[i, :], measurements[i])  # todo debug bresenham
+        import pdb; pdb.set_trace()
 
         # Real-Time Plotting
         # (comment out these next lines to make it run super fast, matplotlib is painfully slow)
-        plt.clf()
-        # pose = state[:, i]
+        # plt.clf()  # todo no point of many figures if you do this?
         pose = state[i, :]
-        cam_pos_grid_x, cam_pos_grid_y = int((state[i, 0] + abs(x_range[0])) * 10), \
-                                         int((state[i, 1] + abs(y_range[0])) * 10)
+        cam_pos_grid_x, cam_pos_grid_y = int((pose[0] + abs(x_range[0])) * 10), \
+                                         int((pose[1] + abs(y_range[0])) * 10)  # todo each image will have different x and y range. Solution: just make big map?
+        # todo border will also affect this! Removed for now
+
 
         # circle = plt.Circle((pose[1], pose[0]), radius=1.5, fc='blue')
         # circle = plt.Circle((map.log_prob_map.shape[1] - cam_pos_grid_y, cam_pos_grid_x),
-        circle = plt.Circle((cam_pos_grid_x, map.log_prob_map.shape[1] - cam_pos_grid_y),
+        # circle = plt.Circle((map.border + cam_pos_grid_x, map.border + map.log_prob_map.shape[1] - cam_pos_grid_y),
+        circle = plt.Circle((cam_pos_grid_x - map.border, map.log_prob_map.shape[1] - cam_pos_grid_y - map.border),
                             radius=1.5, fc='blue')
         plt.gca().add_patch(circle)
         # todo move arrow
@@ -650,7 +655,8 @@ if __name__ == '__main__':
         # todo how to set xticks here?
 
         probability_map = 1.0 - 1. / (1. + np.exp(map.log_prob_map))
-        probability_map = np.swapaxes(probability_map, 0, 1)  # todo. was done because my original grid was y, x
+        # probability_map = np.swapaxes(probability_map, 0, 1)  # todo. was done because my original grid was y, x
+        probability_map = probability_map.T
         # probability_map = np.flip(probability_map, 1)  # todo is this even correct?
         plt.imshow(probability_map, 'Greys')
         plt.title('Probability map: {}'.format(i))
@@ -660,17 +666,18 @@ if __name__ == '__main__':
         # plt.yticklabels([round(y, 1) for y in y_range])
 
         plt.figure()
-        # thresholded_map = np.zeros(probability_map.shape)
-        # thresholded_map[probability_map > 0.7] = 1
-        thresholded_map = np.ones(probability_map.shape)
-        thresholded_map[probability_map > 0.7] = 0
-        plt.imshow(thresholded_map)
+        thresholded_map = np.zeros(probability_map.shape)
+        thresholded_map[probability_map > 0.7] = 1 # todo do black and white
+        # thresholded_map = np.ones(probability_map.shape)
+        # thresholded_map[probability_map > 0.7] = 0
+        plt.imshow(thresholded_map, cmap='gray')
         plt.title('Thresholded map: {}'.format(i))
         plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
         plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
         plt.pause(0.005)
         # plt.show()
         # import pdb;pdb.set_trace()
+        # break
 
     # plt.show()
     # Final Plotting
@@ -683,99 +690,3 @@ if __name__ == '__main__':
     # plt.imshow(map.log_prob_map, 'Greys') # log probabilities (looks really cool)
     plt.show()
     # import pdb; pdb.set_trace()
-
-
-    sys.exit()
-    # todo remove below or do something with it e.g. into another file or jupy notebook
-    ####################
-    ####################
-    ####################
-    ####################
-    ####################
-    ####################
-    ####################
-    # lidar_to_grid_map.py
-    EXTEND_AREA = 1.0
-
-    def calc_grid_map_config(ox, oy, xyreso):
-        """
-        Calculates the size, and the maximum distances according to the measurement center
-        """
-        # import pdb;pdb.set_trace()
-        minx = round(min(ox) - EXTEND_AREA / 2.0)  # todo why divide by 2?
-        miny = round(min(oy) - EXTEND_AREA / 2.0)
-        maxx = round(max(ox) + EXTEND_AREA / 2.0)
-        maxy = round(max(oy) + EXTEND_AREA / 2.0)
-        xw = int(round((maxx - minx) / xyreso))
-        yw = int(round((maxy - miny) / xyreso))
-        print("The grid map is ", xw, "x", yw, ".")
-        return minx, miny, maxx, maxy, xw, yw
-
-
-    # def generate_ray_casting_grid_map(ox, oy, ix, iy, xyreso, breshen=True):  # attempt to get center
-    def generate_ray_casting_grid_map(ox, oy, xyreso, breshen=True):
-        """
-        The breshen boolean tells if it's computed with bresenham ray casting (True) or with flood fill (False)
-        """
-        minx, miny, maxx, maxy, xw, yw = calc_grid_map_config(ox, oy, xyreso)
-        pmap = np.ones(
-            (xw, yw)) / 2  # default 0.5 -- [[0.5 for i in range(yw)] for i in range(xw)]
-        centix = int(round(-minx / xyreso))  # center x coordinate of the grid map
-        centiy = int(round(-miny / xyreso))  # center y coordinate of the grid map
-        # occupancy grid computed with bresenham ray casting
-        if breshen:
-            for (x, y) in zip(ox, oy):
-                ix = int(round((x - minx) / xyreso))  # x coordinate of the occupied area
-                iy = int(round((y - miny) / xyreso))  # y coordinate of the occupied area
-                # ix = int(round((ix - minx) / xyreso))  # attempo
-                # iy = int(round((iy - miny) / xyreso))
-                laser_beams = bresenham((centix, centiy),
-                                        (ix, iy))  # line form the lidar to the occupied point
-                for laser_beam in laser_beams:
-                    pmap[laser_beam[0]][laser_beam[1]] = 0.0  # free area 0.0
-                pmap[ix][iy] = 1.0  # occupied area 1.0
-                pmap[ix + 1][iy] = 1.0  # extend the occupied area
-                pmap[ix][iy + 1] = 1.0  # extend the occupied area
-                pmap[ix + 1][iy + 1] = 1.0  # extend the occupied area
-        # # occupancy grid computed with with flood fill
-        # else:
-        #     pmap = init_floodfill((centix, centiy), (ox, oy), (xw, yw), (minx, miny), xyreso)
-        #     flood_fill((centix, centiy), pmap)
-        #     pmap = np.array(pmap, dtype=np.float)
-        #     for (x, y) in zip(ox, oy):
-        #         ix = int(round((x - minx) / xyreso))
-        #         iy = int(round((y - miny) / xyreso))
-        #         pmap[ix][iy] = 1.0  # occupied area 1.0
-        #         pmap[ix + 1][iy] = 1.0  # extend the occupied area
-        #         pmap[ix][iy + 1] = 1.0  # extend the occupied area
-        #         pmap[ix + 1][iy + 1] = 1.0  # extend the occupied area
-        return pmap, minx, maxx, miny, maxy, xyreso
-
-    print(__file__, "start")
-    xyreso = 0.02  # x-y grid resolution
-    # ang, dist = file_read("lidar01.csv")
-    import pdb;pdb.set_trace()
-    dist = measurements[0, :, 0]
-    ang = measurements[0, :, 1]
-    ox = np.sin(ang) * dist  # todo why inverted y and x?
-    oy = np.cos(ang) * dist
-    pmap, minx, maxx, miny, maxy, xyreso = generate_ray_casting_grid_map(ox, oy, state[0, 0],
-                                                                         state[0, 1], xyreso, True)
-    xyres = np.array(pmap).shape
-    plt.figure(1, figsize=(10, 4))
-    plt.subplot(122)
-    plt.imshow(pmap, cmap="PiYG_r")  # cmap = "binary" "PiYG_r" "PiYG_r" "bone" "bone_r" "RdYlGn_r"
-    plt.clim(-0.4, 1.4)
-    plt.gca().set_xticks(np.arange(-.5, xyres[1], 1), minor=True)
-    plt.gca().set_yticks(np.arange(-.5, xyres[0], 1), minor=True)
-    plt.grid(True, which="minor", color="w", linewidth=0.6, alpha=0.5)
-    plt.colorbar()
-    plt.subplot(121)
-    plt.plot([oy, np.zeros(np.size(oy))], [ox, np.zeros(np.size(oy))], "ro-")
-    plt.axis("equal")
-    plt.plot(0.0, 0.0, "ob")
-    plt.gca().set_aspect("equal", "box")
-    bottom, top = plt.ylim()  # return the current ylim
-    plt.ylim((top, bottom))  # rescale y axis, to match the grid orientation
-    plt.grid(True)
-    plt.show()
