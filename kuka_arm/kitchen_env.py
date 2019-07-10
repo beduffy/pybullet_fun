@@ -20,6 +20,36 @@ from kitchen_utils import rand_cmap  # i hate pycharm
 # from .kitchen_utils import rand_cmap
 
 
+default_quat_orientation = p.getQuaternionFromEuler([0, 0, 0])
+quat_orientation = p.getQuaternionFromEuler([0, 0, 3.14 / 2])
+
+all_objects = [
+    {'urdf_fn': 'beer_bottle.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
+    {'urdf_fn': 'bowl.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
+    {'urdf_fn': 'plate.urdf', 'basePosition': [3.4, 1, 1.1], 'dynamic': True},
+    {'urdf_fn': 'glass.urdf', 'basePosition': [3.5, 1.3, 1.1], 'dynamic': True},
+    {'urdf_fn': 'knife.urdf', 'basePosition': [3.6, 1.7, 1.1], 'dynamic': True, 'globalScaling': 0.01},
+    {'urdf_fn': 'spoon.urdf', 'basePosition': [3.5, 1.2, 1.1], 'dynamic': True, 'globalScaling': 0.01},
+    {'urdf_fn': 'fork.urdf', 'basePosition': [3.4, 1.65, 1.1], 'dynamic': True, 'globalScaling': 1.0},
+    {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 0.7, 1.1], 'dynamic': True, 'globalScaling': 0.016},
+    {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 6, 1.5], 'dynamic': True, 'globalScaling': 0.016},
+    {'urdf_fn': 'banana.urdf', 'basePosition': [3.6, 2.3, 1.1], 'dynamic': True},
+    {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.5, 2.4, 1.1], 'dynamic': True, 'globalScaling': 0.01},
+    {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.45, 6.35, 1.5], 'dynamic': True, 'globalScaling': 0.01},
+    {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.4, 2, 1.1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
+    {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.6, 5.8, 1.55], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
+    {'urdf_fn': 'TeaCup.urdf', 'basePosition': [1.5, 5.8, 1.5], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
+    {'urdf_fn': 'sofa.urdf', 'basePosition': [0.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+    {'urdf_fn': 'table.urdf', 'basePosition': [1.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+    {'urdf_fn': 'table.urdf', 'basePosition': [3.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.5},
+    {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 9, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+    {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 4, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
+    {'urdf_fn': 'bed.urdf', 'basePosition': [1.1, 7.8, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.7},
+    {'urdf_fn': 'nordic_floor_lamp_obj.urdf', 'basePosition': [1.5, 9, 1.3], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.01},
+    {'urdf_fn': 'kitchen_walls.urdf', 'dynamic': False},  # todo some link segmentation is black because https://github.com/bulletphysics/bullet3/issues/1631
+    {'urdf_fn': 'kitchen.urdf', 'basePosition': [0.1, 0.15, 0.1], 'dynamic': False}
+]
+
 def load_all_urdfs():
     p.loadURDF("plane.urdf")
 
@@ -246,8 +276,9 @@ def create_point_cloud_and_occupancy_grid():
     all_x = [ball[0] for ball in all_ball_x_y_locations_above_floor]
     all_y = [ball[1] for ball in all_ball_x_y_locations_above_floor]
     global x_range, y_range  # todo should really update across all poses so that everything fits in. Naturally growing.
-    x_range = np.arange(math.floor(min(all_x) - 1), math.ceil(max(all_x)), 0.1)  # todo add border!?!?!
-    y_range = np.arange(math.floor(min(all_y) - 1), math.ceil(max(all_y)), 0.1)
+    border = 1  # todo use all past and current ball locations to find the xrange here OR on pickle read!!!!!!
+    x_range = np.arange(math.floor(min(all_x) - border), math.ceil(max(all_x)), 0.1)  # todo add border!?!?! to ceiling
+    y_range = np.arange(math.floor(min(all_y) - border), math.ceil(max(all_y)), 0.1)  # todo or just prespecify map size!!?
 
     def set_closest_occupancy_grid(ball):
         ball_seg_class = ball[2]
@@ -423,11 +454,14 @@ class Map():
                  measurement_model='laser_width_inverse_range_sensor_model'):
         # self.border = 2
         # self.border = 5  # todo messes up a few things
+        self.x_range = x_range
+        self.y_range = y_range
         self.border = 0
         self.xsize = xsize + self.border  # Add extra cells for the borders
         self.ysize = ysize + self.border
         self.grid_size = grid_size # save this off for future use
-        self.log_prob_map = np.zeros((self.xsize, self.ysize)) # set all to zero
+        # self.log_prob_map = np.zeros((self.xsize, self.ysize)) # set all to zero  # todo this is awfully confusing since x is rows
+        self.log_prob_map = np.zeros((self.ysize, self.xsize)) # set all to zero
 
         self.alpha = 1.0 # The assumed thickness of obstacles
         self.beta = 5.0 * np.pi / 180.0 # The assumed width of the laser beam
@@ -436,7 +470,7 @@ class Map():
         # Pre-allocate the x and y positions of all grid positions into a 3D tensor
         # (pre-allocation = faster)
         self.grid_position_m = np.array([np.tile(np.arange(0, self.xsize * self.grid_size, self.grid_size)[:,None], (1, self.ysize)),
-                                         np.tile(np.arange(0, self.ysize * self.grid_size, self.grid_size)[:,None].T, (self.xsize, 1))])
+                                         np.tile(np.arange(0, self.ysize * self.grid_size, self.grid_size)[:,None].T, (self.xsize, 1))])  # todo this has to be flipped too?
         # todo how to naturally extend the map?
         # shape: (2, 102, 102) # todo why?
         # Log-Probabilities to add or remove from the map
@@ -448,24 +482,31 @@ class Map():
         self.measurement_model = 'my_algorithm'
 
     def update_map(self, pose, z):
-        dx = self.grid_position_m.copy() # A tensor of coordinates of all cells
-        dx[0, :, :] -= pose[0] # A matrix of all the x coordinates of the cell
-        dx[1, :, :] -= pose[1] # A matrix of all the y coordinates of the cell
-        # pose[2] must be theta in table 9.2 chapter 9 of probabilistic robotics
-        # theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) - pose[2] # matrix of all bearings from robot to cell
-        theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) # matrix of all bearings from robot to cell
+        # dx = self.grid_position_m.copy() # A tensor of coordinates of all cells
+        # dx[0, :, :] -= pose[0] # A matrix of all the x coordinates of the cell
+        # dx[1, :, :] -= pose[1] # A matrix of all the y coordinates of the cell
+        # # pose[2] must be theta in table 9.2 chapter 9 of probabilistic robotics
+        # # theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) - pose[2] # matrix of all bearings from robot to cell
+        # theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) # matrix of all bearings from robot to cell
+        #
+        # # todo is the bug above or below? above. removing - pose[2] made it horizontal as it should be?
+        # # Wrap to +pi / - pi
+        # theta_to_grid[theta_to_grid > np.pi] -= 2. * np.pi
+        # theta_to_grid[theta_to_grid < -np.pi] += 2. * np.pi
+        #
+        # dist_to_grid = scipy.linalg.norm(dx, axis=0) # matrix of L2 distance to all cells from robot
 
-        # todo is the bug above or below? above. removing - pose[2] made it horizontal as it should be?
-        # Wrap to +pi / - pi
-        theta_to_grid[theta_to_grid > np.pi] -= 2. * np.pi
-        theta_to_grid[theta_to_grid < -np.pi] += 2. * np.pi
-
-        dist_to_grid = scipy.linalg.norm(dx, axis=0) # matrix of L2 distance to all cells from robot
+        ball_xs = [int(round(z_i[2].item() / self.grid_size)) for z_i in z]  # todo pass in!!!!
+        ball_ys = [int(round(z_i[3].item() / self.grid_size)) for z_i in z]
+        min_ball_x = min(ball_xs)
+        min_ball_y = min(ball_ys)
+        print('Min ball y: ', min_ball_y, 'min_ball_x: ', min_ball_x)
 
         # For each laser beam
         for z_i in z:
             r = z_i[0] # range measured
             b = z_i[1] # bearing measured
+            # z_i[2:5] xyz of point in pointcloud
 
             if self.measurement_model == 'laser_width_inverse_range_sensor_model':
                 # Check table 9.2 in probabilistic robotics
@@ -515,17 +556,29 @@ class Map():
                 # todo try flood fill as well?
             elif self.measurement_model == 'my_algorithm':
                 # For each ball position, add log odds occupied
-                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size))
-                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size))
-                self.log_prob_map[ball_x_grid_pos, ball_y_grid_pos] += self.l_occ
-                # todo bresenham bug is here too. Fix both!
-                # import pdb;pdb.set_trace()
 
+                # todo need to add the old border (not new) to every grid position!!!
+                # ball_x_grid_pos = int(self.x_range[0]) + int(round(z_i[2].item() / self.grid_size))  # todo rounding errors? always floor?
+                # ball_y_grid_pos = int(self.y_range[0]) + int(round(z_i[3].item() / self.grid_size))  # todo division of number below 1 by a number below 1 causes the number to go high??!
+                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size)) + min_ball_x
+                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size)) - min_ball_y  # todo looks much better but -2 is the bottom instead of 0
+                # todo seems a bit off with int(self.x_range[0]) +
+                # todo do we subtract y_range[0]?
+                # self.log_prob_map[ball_x_grid_pos, ball_y_grid_pos] += self.l_occ
+                self.log_prob_map[ball_y_grid_pos, ball_x_grid_pos] += self.l_occ  # todo flip?!?!? Why again did we stop flipping earlier?
+                # todo bresenham bug is here too. Fix both!
+
+                # todo grey means don't know. black means occupied. white means free. Should be done somewhere, 0.5 starting value in probability map?
+
+                # if ball_y_grid_pos < 5:
+                #     import pdb;pdb.set_trace()
+                a = 5  # grid = np.zeros_like(self.log_prob_map); grid[ball_x_grid_pos, ball_y_grid_pos] = 1.; plt.figure(); plt.imshow(grid, 'Greys', origin='lower'); plt.show()
                 # todo We need to add the minimum value and multiply by 10!>?!? Invert y-axis too.
-                # todo is this why we begin at -2.0?
+                # todo is this why we begin at -2.0? # todo go through every z and ball point and again plot.
                 # grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)
                 # grid[grid.shape[0] - grid_y, grid_x] = 1  # todo occ_mask instead
-
+                # grid_size = 0.1; all_ball_x_y_grid = [(int(round(z_i[2].item() / grid_size)), int(round(z_i[3].item() / grid_size))) for z_i in z]
+                # todo ahhhhhhhhh it's the grid that's not the same size?!?!?!?
 
 if __name__ == '__main__':
     start_time = time.time()
@@ -536,43 +589,13 @@ if __name__ == '__main__':
     #
     # p.resetSimulation()
     # p.setGravity(0, 0, -9.8)
-
-    default_quat_orientation = p.getQuaternionFromEuler([0, 0, 0])
-    quat_orientation = p.getQuaternionFromEuler([0, 0, 3.14 / 2])
-
-    all_objects = [
-        {'urdf_fn': 'beer_bottle.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
-        {'urdf_fn': 'bowl.urdf', 'basePosition': [3.4, 1.5, 1.1], 'dynamic': True},
-        {'urdf_fn': 'plate.urdf', 'basePosition': [3.4, 1, 1.1], 'dynamic': True},
-        {'urdf_fn': 'glass.urdf', 'basePosition': [3.5, 1.3, 1.1], 'dynamic': True},
-        {'urdf_fn': 'knife.urdf', 'basePosition': [3.6, 1.7, 1.1], 'dynamic': True, 'globalScaling': 0.01},
-        {'urdf_fn': 'spoon.urdf', 'basePosition': [3.5, 1.2, 1.1], 'dynamic': True, 'globalScaling': 0.01},
-        {'urdf_fn': 'fork.urdf', 'basePosition': [3.4, 1.65, 1.1], 'dynamic': True, 'globalScaling': 1.0},
-        {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 0.7, 1.1], 'dynamic': True, 'globalScaling': 0.016},
-        {'urdf_fn': 'tissue_box.urdf', 'basePosition': [3.5, 6, 1.5], 'dynamic': True, 'globalScaling': 0.016},
-        {'urdf_fn': 'banana.urdf', 'basePosition': [3.6, 2.3, 1.1], 'dynamic': True},
-        {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.5, 2.4, 1.1], 'dynamic': True, 'globalScaling': 0.01},
-        {'urdf_fn': 'crisps_chips.urdf', 'basePosition': [3.45, 6.35, 1.5], 'dynamic': True, 'globalScaling': 0.01},
-        {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.4, 2, 1.1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
-        {'urdf_fn': 'TeaCup.urdf', 'basePosition': [3.6, 5.8, 1.55], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
-        {'urdf_fn': 'TeaCup.urdf', 'basePosition': [1.5, 5.8, 1.5], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.06, 'flags': p.URDF_USE_MATERIAL_COLORS_FROM_MTL},
-        {'urdf_fn': 'sofa.urdf', 'basePosition': [0.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-        {'urdf_fn': 'table.urdf', 'basePosition': [1.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-        {'urdf_fn': 'table.urdf', 'basePosition': [3.5, 6, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.5},
-        {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 9, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-        {'urdf_fn': 'trash_can.urdf', 'basePosition': [3.5, 4, 1], 'dynamic': True, 'baseOrientation': quat_orientation},
-        {'urdf_fn': 'bed.urdf', 'basePosition': [1.1, 7.8, 1], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 1.7},
-        {'urdf_fn': 'nordic_floor_lamp_obj.urdf', 'basePosition': [1.5, 9, 1.3], 'dynamic': True, 'baseOrientation': quat_orientation, 'globalScaling': 0.01},
-        {'urdf_fn': 'kitchen_walls.urdf', 'dynamic': False},  # todo some link segmentation is black because https://github.com/bulletphysics/bullet3/issues/1631
-        {'urdf_fn': 'kitchen.urdf', 'basePosition': [0.1, 0.15, 0.1], 'dynamic': False}
-    ]
-
-    # todo find better way of debugging maps and organising code in general. Instead of commenting this out all the time e.g. different file, user input
+    #
+    # # # todo find better way of debugging maps and organising code in general. Instead of commenting this out all the time e.g. different file, user input
     # obj_id_to_obj_name, obj_name_to_obj_id = load_all_urdfs()
     # print('Time taken to load all objects and begin simulation: {:.2f}'.format(
     #     time.time() - start_time))
     #
-    # # new_cmap = rand_cmap(100, type='bright', first_color_black=True, last_color_black=False, verbose=True)
+    # # # new_cmap = rand_cmap(100, type='bright', first_color_black=True, last_color_black=False, verbose=True)
     # new_cmap = rand_cmap(100, type='bright', first_color_black=True, last_color_black=False, verbose=False)
     # segLinkIndex = False
     # all_beam_measurements = []
@@ -616,6 +639,7 @@ if __name__ == '__main__':
     # TODO take 1-3 lidar point cloud pictures automatically. And even save them and load and don't even run pybullet????
 
     # load data from multiple measurements taken from pressing p key.
+    # with open('beam_measurements_and_pose_two_viewpoints_with_jpg.pkl', 'rb') as f:
     with open('beam_measurements_and_pose.pkl', 'rb') as f:
         data = pickle.load(f)
         # state/pose each has: (x, y, theta (direction we are facing))
@@ -624,12 +648,30 @@ if __name__ == '__main__':
         measurements = data['beam_measurements']
         x_range = data['grid_xrange']
         y_range = data['grid_yrange']
-        print('x_range: {}. y_range: {}'.format(x_range, y_range))
+        grid_size = 0.1
+        # import pdb;pdb.set_trace()
+        all_ball_xy_concat = [m[2:4] for viewpoint in measurements for m in viewpoint]
+        ball_xs = [int(round(z_i[0].item() / grid_size)) for z_i in all_ball_xy_concat]
+        ball_ys = [int(round(z_i[1].item() / grid_size)) for z_i in all_ball_xy_concat]
+        min_ball_x, max_ball_x = min(ball_xs), max(ball_xs)  # todo bordeR?
+        min_ball_y, max_ball_y = min(ball_ys), max(ball_ys)
+        print('Min ball y: ', min_ball_y, 'max_ball_y: ', max_ball_y)
+        print('Min ball x: ', min_ball_x, 'Max_ball_x: ', max_ball_x)
+        border = 3
+        x_range = np.arange(min_ball_x - border, max_ball_x + border)
+        y_range = np.arange(min_ball_x - border, max_ball_y + border)
+        print('x_range: {}. y_range: {}'.format(len(x_range), len(y_range)))
+        # import pdb;pdb.set_trace()
+        # all_ball_x_y_locations_above_floor = [m[2:4] for m in measurements[0]]; plt.figure(); plt.scatter([x[0] for x in all_ball_x_y_locations_above_floor], [x[1] for x in all_ball_x_y_locations_above_floor], s=1.5); plt.scatter(state[0][0], state[0][1], color='r'); plt.show()
+        # grid_size = 0.1; all_ball_x_y_grid = [(int(round(m[0].item() / grid_size)), int(round(m[1].item() / grid_size))) for m in all_ball_x_y_locations_above_floor]; plt.figure(); plt.scatter([x[0] for x in all_ball_x_y_grid], [x[1] for x in all_ball_x_y_grid], s=1.5); plt.scatter(state[0][0], state[0][1], color='r'); plt.show()
+        # max([x[0] for x in all_ball_x_y_locations_above_floor]); min([x[1] for x in all_ball_x_y_locations_above_floor])
+        # grid = np.zeros((x_range.shape[0], y_range.shape[0])); for ball in all_ball_x_y_grid: grid[ball[0], ball[1]] = 1
+        # plt.figure(); grid = grid.T; plt.imshow(grid, 'Greys', origin='lower'); plt.show()
         # todo could store the old grid too and use that
         # todo keep flipping and analysing the new grid. Confirm angles correct, confirm points correct, confirm x and y axis, borders (not 30) etc
 
     # Define the parameters for the map.  (This is a 60x60m map with grid size 0.1x0.1m)
-    grid_size = 0.1
+
     # map = Map(int(60 / grid_size), int(60 / grid_size), grid_size)
     map = Map(int(len(x_range)), int(len(y_range)), grid_size, x_range, y_range)
 
@@ -656,8 +698,10 @@ if __name__ == '__main__':
         # (comment out these next lines to make it run super fast, matplotlib is painfully slow)
         pose = state[i, :]
         # todo each image will have different x and y range. Solution: just make big map?
-        cam_pos_grid_x, cam_pos_grid_y = int(round(pose[0] / grid_size)), \
-                                         int(round(pose[1] / grid_size))
+        # cam_pos_grid_x, cam_pos_grid_y = int(round(pose[0] / grid_size)), \
+        #                                  int(round(pose[1] / grid_size))
+        cam_pos_grid_x, cam_pos_grid_y = int(round(pose[0] / grid_size)) + min_ball_x, \
+                                         int(round(pose[1] / grid_size)) - min_ball_y  # todo x is slightly to the right
         # todo border will also affect this! Removed for now. Add + border above.
 
         circle_x_pos, circle_y_pos = cam_pos_grid_x + map.border, cam_pos_grid_y + map.border
@@ -675,7 +719,7 @@ if __name__ == '__main__':
         # plt.plot([cam_pos_grid_y, arrow[1]], [cam_pos_grid_x, arrow[0]])  # todo why inverted?
 
         probability_map = 1.0 - 1. / (1. + np.exp(map.log_prob_map))
-        probability_map = probability_map.T  # x, y -> y, x
+        # probability_map = probability_map.T  # transpose x, y -> y, x.
         plt.imshow(probability_map, 'Greys', origin='lower')  # todo how does origin lower affect the circle? not at all? Wait it does affect it!
         plt.title('Probability map: {}'.format(i))
         # todo in my original grid y-axis went from top to bottom -2.0 to 4.9 but it covered everything. Why is there a gap?
@@ -687,7 +731,7 @@ if __name__ == '__main__':
         thresholded_map = np.zeros(probability_map.shape)
         thresholded_map[probability_map > 0.7] = 1
         plt.imshow(thresholded_map, cmap='gray', origin='lower')
-        plt.title('Thresholded map: {}'.format(i))
+        plt.title('Thresholded map: {}'.format(i))  # todo blue dot on campos
         plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
         plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
         plt.xticks(rotation=90)
