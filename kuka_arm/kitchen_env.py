@@ -267,9 +267,6 @@ def create_point_cloud_and_occupancy_grid():
                                           zip(all_ball_locations, all_ball_seg_objs)
                                           if ball_loc[2] > floor_height]
 
-
-
-
     # loop through each point and set occupancy grid to 1 where it is closest
     # x_range = np.arange(math.floor(ax.get_xlim()[0]), math.ceil(ax.get_xlim()[1]), 0.1)
     # y_range = np.arange(math.floor(ax.get_ylim()[0]), math.ceil(ax.get_ylim()[1]), 0.1)
@@ -279,12 +276,18 @@ def create_point_cloud_and_occupancy_grid():
     border = 1  # todo use all past and current ball locations to find the xrange here OR on pickle read!!!!!!
     x_range = np.arange(math.floor(min(all_x) - border), math.ceil(max(all_x)), 0.1)  # todo add border!?!?! to ceiling
     y_range = np.arange(math.floor(min(all_y) - border), math.ceil(max(all_y)), 0.1)  # todo or just prespecify map size!!?
+    # todo above is wrong
 
     def set_closest_occupancy_grid(ball):
         ball_seg_class = ball[2]
-        x, y = round(ball[0], 1), round(ball[1], 1)
-        grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)
-        grid[grid.shape[0] - grid_y, grid_x] = 1  # todo crashed in another room. fix. #IndexError: index 50 is out of bounds for axis 1 with size 50
+        x, y = round(ball[0], 1), round(ball[1], 1)  # round to nearest 10cm2
+        grid_x, grid_y = int((x + abs(x_range[0])) * 10), int((y + abs(y_range[0])) * 10)  # todo divide by grid_size instead
+        # todo fix index error bug beside door. Is there something far away?
+        try:
+            grid[grid.shape[0] - grid_y, grid_x] = 1  # todo crashed in another room. fix. #IndexError: index 50 is out of bounds for axis 1 with size 50
+        except Exception as e:
+            print('Index error: {}'.format(e))
+            import pdb;pdb.set_trace()
         grid_object_class[grid.shape[0] - grid_y, grid_x] = ball_seg_class
         grid_list_object_class[grid.shape[0] - grid_y][grid_x].append(ball_seg_class)  # todo could double check if it properly works
 
@@ -365,41 +368,41 @@ def draw_figures(x_range, y_range, all_ball_x_y_locations_above_floor, camPos, c
     ax2.scatter(cam_pos_grid_x, grid.shape[0] - cam_pos_grid_y, color='r')
     ax2.imshow(grid, interpolation='none', cmap='gray')
 
-    # fig.canvas.draw()
-    # ax3.set_xticks(range(x_range.shape[0]))
-    # ax3.set_yticks(range(y_range.shape[0]))
-    # ax3.set_xticklabels([round(x, 1) for x in x_range])
-    # ax3.set_yticklabels([round(y, 1) for y in y_range])
-    # ax3.set_title('Object Map')
-    # plt.xticks(rotation=80)
-    # num_unique_objects = len(np.unique(grid_object_class))
-    #
-    # print('{} unique objects in segmentation buffer'.format(num_unique_objects))
-    # uniq_ints_in_seg_buffer = np.unique(segBuffer)
-    # mapping_to_positive_ints = {x: i for i, x in enumerate(uniq_ints_in_seg_buffer)}
-    # # mapping_from_positive_ints_to_orig = {i: x for i, x in enumerate(uniq_ints_in_seg_buffer)}
-    # # Make kitchen_walls_and_floor object the 0th index so tmp swap needed
-    # key_with_0_value = list(mapping_to_positive_ints.keys())[list(mapping_to_positive_ints.values()).index(0)]
-    # mapping_to_positive_ints[key_with_0_value] = mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']]
-    # mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']] = 0
-    #
-    # grid_object_class = grid_object_class.astype('int64')
-    # grid_object_class_mapped_positive_ints = np.copy(grid_object_class)
-    # for key in mapping_to_positive_ints:
-    #     grid_object_class_mapped_positive_ints[grid_object_class == key] = \
-    #         mapping_to_positive_ints[key]
-    # ax3.imshow(grid_object_class_mapped_positive_ints, interpolation='none', cmap=new_cmap)
-    # fontP = FontProperties()
-    # fontP.set_size('small')
-    # # reverse mapping. Colour should be the value of mapping_to_positive_ints[key]
-    # # Label should be object name using original key
-    # legend_elements = [Patch(facecolor=new_cmap(positive_val),
-    #                    label=obj_id_to_obj_name[key])
-    #                    for key, positive_val in mapping_to_positive_ints.items()
-    #                    if key in obj_id_to_obj_name]
-    # box = ax3.get_position()
-    # ax3.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    # ax3.legend(loc='center left', handles=legend_elements, prop=fontP,  bbox_to_anchor=(1, 0.5))
+    fig.canvas.draw()
+    ax3.set_xticks(range(x_range.shape[0]))
+    ax3.set_yticks(range(y_range.shape[0]))
+    ax3.set_xticklabels([round(x, 1) for x in x_range])
+    ax3.set_yticklabels([round(y, 1) for y in y_range])
+    ax3.set_title('Object Map')
+    plt.xticks(rotation=80)
+    num_unique_objects = len(np.unique(grid_object_class))
+
+    print('{} unique objects in segmentation buffer'.format(num_unique_objects))
+    uniq_ints_in_seg_buffer = np.unique(segBuffer)
+    mapping_to_positive_ints = {x: i for i, x in enumerate(uniq_ints_in_seg_buffer)}
+    # mapping_from_positive_ints_to_orig = {i: x for i, x in enumerate(uniq_ints_in_seg_buffer)}
+    # Make kitchen_walls_and_floor object the 0th index so tmp swap needed
+    key_with_0_value = list(mapping_to_positive_ints.keys())[list(mapping_to_positive_ints.values()).index(0)]
+    mapping_to_positive_ints[key_with_0_value] = mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']]
+    mapping_to_positive_ints[obj_name_to_obj_id['kitchen_walls_0']] = 0
+
+    grid_object_class = grid_object_class.astype('int64')
+    grid_object_class_mapped_positive_ints = np.copy(grid_object_class)
+    for key in mapping_to_positive_ints:
+        grid_object_class_mapped_positive_ints[grid_object_class == key] = \
+            mapping_to_positive_ints[key]
+    ax3.imshow(grid_object_class_mapped_positive_ints, interpolation='none', cmap=new_cmap)
+    fontP = FontProperties()
+    fontP.set_size('small')
+    # reverse mapping. Colour should be the value of mapping_to_positive_ints[key]
+    # Label should be object name using original key
+    legend_elements = [Patch(facecolor=new_cmap(positive_val),
+                       label=obj_id_to_obj_name[key])
+                       for key, positive_val in mapping_to_positive_ints.items()
+                       if key in obj_id_to_obj_name]
+    box = ax3.get_position()
+    ax3.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax3.legend(loc='center left', handles=legend_elements, prop=fontP,  bbox_to_anchor=(1, 0.5))
     #
     # print("obj_name_to_obj_id['kitchen_0']: {}".format(obj_name_to_obj_id['kitchen_0']))
     # print('mapping_to_positive_ints[obj_name_to_obj_id[\'kitchen_0\']: ', mapping_to_positive_ints[obj_name_to_obj_id['kitchen_0']])
@@ -450,17 +453,17 @@ class Map():
     Adapted from: https://gist.github.com/superjax/33151f018407244cb61402e094099c1d
     """
     # def __init__(self, xsize, ysize, grid_size):
-    def __init__(self, xsize, ysize, grid_size, x_range, y_range,
+    def __init__(self, xsize, ysize, grid_size, x_range, y_range, min_ball_x, min_ball_y,
                  measurement_model='laser_width_inverse_range_sensor_model'):
         # self.border = 2
         # self.border = 5  # todo messes up a few things
         self.x_range = x_range
         self.y_range = y_range
+        self.min_ball_x, self.min_ball_y = min_ball_x, min_ball_y
         self.border = 0
         self.xsize = xsize + self.border  # Add extra cells for the borders
         self.ysize = ysize + self.border
         self.grid_size = grid_size # save this off for future use
-        # self.log_prob_map = np.zeros((self.xsize, self.ysize)) # set all to zero  # todo this is awfully confusing since x is rows
         self.log_prob_map = np.zeros((self.ysize, self.xsize)) # set all to zero
 
         self.alpha = 1.0 # The assumed thickness of obstacles
@@ -469,25 +472,34 @@ class Map():
 
         # Pre-allocate the x and y positions of all grid positions into a 3D tensor
         # (pre-allocation = faster)
-        self.grid_position_m = np.array([np.tile(np.arange(0, self.xsize * self.grid_size, self.grid_size)[:,None], (1, self.ysize)),
-                                         np.tile(np.arange(0, self.ysize * self.grid_size, self.grid_size)[:,None].T, (self.xsize, 1))])  # todo this has to be flipped too?
-        # todo how to naturally extend the map?
+        # self.grid_position_m = np.array([np.tile(np.arange(0, self.xsize * self.grid_size, self.grid_size)[:,None], (1, self.ysize)),
+        #                                  np.tile(np.arange(0, self.ysize * self.grid_size, self.grid_size)[:,None].T, (self.xsize, 1))])  # todo this has to be flipped too?
+        # self.grid_position_m = np.array([np.tile(np.arange(0, self.ysize * self.grid_size, self.grid_size)[:,None], (self.xsize, 1)),
+        #                                  np.tile(np.arange(0, self.xsize * self.grid_size, self.grid_size)[:,None].T, (1, self.ysize))])
+        # import pdb;
+        # pdb.set_trace()  #
+        # self.grid_position_m = np.swapaxes(self.grid_position_m, 1, 2)
+        # todo this has to be flipped too?
+        # # todo how to naturally extend the map?
         # shape: (2, 102, 102) # todo why?
         # Log-Probabilities to add or remove from the map
         self.l_occ = np.log(0.65/0.35)
         self.l_free = np.log(0.35/0.65)
 
-        self.measurement_model = measurement_model
-        # self.measurement_model = 'bresenham_ray_tracing'  # todo why does this cause a big gap? Are we going through walls?  # todo debug
+        # self.measurement_model = measurement_model
+        # self.measurement_model = 'bresenham_ray_tracing'
         self.measurement_model = 'my_algorithm'
 
     def update_map(self, pose, z):
         # dx = self.grid_position_m.copy() # A tensor of coordinates of all cells
-        # dx[0, :, :] -= pose[0] # A matrix of all the x coordinates of the cell
-        # dx[1, :, :] -= pose[1] # A matrix of all the y coordinates of the cell
+        # # dx[0, :, :] -= pose[0] # A matrix of all the x coordinates of the cell
+        # # dx[1, :, :] -= pose[1] # A matrix of all the y coordinates of the cell
+        # dx[1, :, :] -= pose[0]  # A matrix of all the x coordinates of the cell
+        # dx[0, :, :] -= pose[1]  # A matrix of all the y coordinates of the cell
         # # pose[2] must be theta in table 9.2 chapter 9 of probabilistic robotics
         # # theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) - pose[2] # matrix of all bearings from robot to cell
-        # theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) # matrix of all bearings from robot to cell
+        # # theta_to_grid = np.arctan2(dx[1, :, :], dx[0, :, :]) # matrix of all bearings from robot to cell
+        # theta_to_grid = np.arctan2(dx[0, :, :], dx[1, :, :]) # matrix of all bearings from robot to cell
         #
         # # todo is the bug above or below? above. removing - pose[2] made it horizontal as it should be?
         # # Wrap to +pi / - pi
@@ -496,12 +508,6 @@ class Map():
         #
         # dist_to_grid = scipy.linalg.norm(dx, axis=0) # matrix of L2 distance to all cells from robot
 
-        ball_xs = [int(round(z_i[2].item() / self.grid_size)) for z_i in z]  # todo pass in!!!!
-        ball_ys = [int(round(z_i[3].item() / self.grid_size)) for z_i in z]
-        min_ball_x = min(ball_xs)
-        min_ball_y = min(ball_ys)
-        print('Min ball y: ', min_ball_y, 'min_ball_x: ', min_ball_x)
-
         # For each laser beam
         for z_i in z:
             r = z_i[0] # range measured
@@ -509,7 +515,7 @@ class Map():
             # z_i[2:5] xyz of point in pointcloud
 
             if self.measurement_model == 'laser_width_inverse_range_sensor_model':
-                # Check table 9.2 in probabilistic robotics
+                # Check table 9.2 in probabilistic robotics book
                 # todo y-axis beam angle seems inverted?
                 # Calculate which cells are measured free or occupied, so we know which cells to update
                 # Doing it this way is like a billion times faster than looping through each cell (because vectorized numpy is the only way to numpy)
@@ -523,14 +529,15 @@ class Map():
                 self.log_prob_map[free_mask] += self.l_free  # ahhhhh this probably doesn't calculate the full frustum. It probably does it per laser.
             elif self.measurement_model == 'bresenham_ray_tracing':  # bresenham ray tracing line measurement model
                 # https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-                # todo fix the big gap here!!!!!
                 # Use actual x, y location of ball instead of range and bearing to calculate free-space
                 free_mask, occ_mask = [], []
                 # todo do we need to add x_range[0] and flip y-axis here? First flip y-axis later. Nah only in visualisation
-                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size))
-                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size))
-                pose_x_grid_pos = int(round(pose[0].item() / self.grid_size))  # todo why was it: centix = int(round(-minx / xyreso))
-                pose_y_grid_pos = int(round(pose[1].item() / self.grid_size))
+                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size)) + self.min_ball_x
+                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size)) - self.min_ball_y
+                pose_x_grid_pos = int(round(pose[0].item() / self.grid_size)) + self.min_ball_x  # todo why was it: centix = int(round(-minx / xyreso))
+                pose_y_grid_pos = int(round(pose[1].item() / self.grid_size)) - self.min_ball_y
+
+                # todo if lasers overlap e.g. over the table and onto the table with same theta, then the last one or furthest one will override. World isn't 2D.
 
                 # ix = int(round((pose[0] - minx) / xyreso))  # x coordinate of the occupied area
                 # iy = int(round((pose[1] - miny) / xyreso))  # y coordinate of the occupied area
@@ -550,8 +557,8 @@ class Map():
                 # pmap[ix][iy + 1] = 1.0  # extend the occupied area
                 # pmap[ix + 1][iy + 1] = 1.0  # extend the occupied area
 
-                self.log_prob_map[[xy[0] for xy in occ_mask], [xy[1] for xy in occ_mask]] += self.l_occ
-                self.log_prob_map[[xy[0] for xy in free_mask], [xy[1] for xy in free_mask]] += self.l_free
+                self.log_prob_map[[xy[1] for xy in occ_mask], [xy[0] for xy in occ_mask]] += self.l_occ
+                self.log_prob_map[[xy[1] for xy in free_mask], [xy[0] for xy in free_mask]] += self.l_free
 
                 # todo try flood fill as well?
             elif self.measurement_model == 'my_algorithm':
@@ -560,18 +567,16 @@ class Map():
                 # todo need to add the old border (not new) to every grid position!!!
                 # ball_x_grid_pos = int(self.x_range[0]) + int(round(z_i[2].item() / self.grid_size))  # todo rounding errors? always floor?
                 # ball_y_grid_pos = int(self.y_range[0]) + int(round(z_i[3].item() / self.grid_size))  # todo division of number below 1 by a number below 1 causes the number to go high??!
-                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size)) + min_ball_x
-                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size)) - min_ball_y  # todo looks much better but -2 is the bottom instead of 0
+                ball_x_grid_pos = int(round(z_i[2].item() / self.grid_size)) + self.min_ball_x
+                ball_y_grid_pos = int(round(z_i[3].item() / self.grid_size)) - self.min_ball_y  # todo looks much better but -2 is the bottom instead of 0
+                # todo why subtract min_ball_y vs add min ball x?
                 # todo seems a bit off with int(self.x_range[0]) +
                 # todo do we subtract y_range[0]?
                 # self.log_prob_map[ball_x_grid_pos, ball_y_grid_pos] += self.l_occ
                 self.log_prob_map[ball_y_grid_pos, ball_x_grid_pos] += self.l_occ  # todo flip?!?!? Why again did we stop flipping earlier?
-                # todo bresenham bug is here too. Fix both!
 
                 # todo grey means don't know. black means occupied. white means free. Should be done somewhere, 0.5 starting value in probability map?
 
-                # if ball_y_grid_pos < 5:
-                #     import pdb;pdb.set_trace()
                 a = 5  # grid = np.zeros_like(self.log_prob_map); grid[ball_x_grid_pos, ball_y_grid_pos] = 1.; plt.figure(); plt.imshow(grid, 'Greys', origin='lower'); plt.show()
                 # todo We need to add the minimum value and multiply by 10!>?!? Invert y-axis too.
                 # todo is this why we begin at -2.0? # todo go through every z and ball point and again plot.
@@ -640,6 +645,7 @@ if __name__ == '__main__':
 
     # load data from multiple measurements taken from pressing p key.
     # with open('beam_measurements_and_pose_two_viewpoints_with_jpg.pkl', 'rb') as f:
+    # with open('beam_measurements_and_pose_5_good_with_last_in_2nd_room.pkl', 'rb') as f:
     with open('beam_measurements_and_pose.pkl', 'rb') as f:
         data = pickle.load(f)
         # state/pose each has: (x, y, theta (direction we are facing))
@@ -649,17 +655,25 @@ if __name__ == '__main__':
         x_range = data['grid_xrange']
         y_range = data['grid_yrange']
         grid_size = 0.1
-        # import pdb;pdb.set_trace()
+
+        # get all point cloud xy positions from all measurements and calculate size of big map
         all_ball_xy_concat = [m[2:4] for viewpoint in measurements for m in viewpoint]
-        ball_xs = [int(round(z_i[0].item() / grid_size)) for z_i in all_ball_xy_concat]
-        ball_ys = [int(round(z_i[1].item() / grid_size)) for z_i in all_ball_xy_concat]
-        min_ball_x, max_ball_x = min(ball_xs), max(ball_xs)  # todo bordeR?
+        ball_xs = [z_i[0].item() for z_i in all_ball_xy_concat]
+        ball_ys = [z_i[1].item() for z_i in all_ball_xy_concat]
+        min_ball_x, max_ball_x = min(ball_xs), max(ball_xs)
         min_ball_y, max_ball_y = min(ball_ys), max(ball_ys)
-        print('Min ball y: ', min_ball_y, 'max_ball_y: ', max_ball_y)
-        print('Min ball x: ', min_ball_x, 'Max_ball_x: ', max_ball_x)
-        border = 3
-        x_range = np.arange(min_ball_x - border, max_ball_x + border)
-        y_range = np.arange(min_ball_x - border, max_ball_y + border)
+        print('Min ball x: ', min_ball_x, 'max ball x: ', max_ball_x)
+        print('Min ball y: ', min_ball_y, 'max_ball y: ', max_ball_y)
+        ball_grid_xs = [int(round(z_i[0].item() / grid_size)) for z_i in all_ball_xy_concat]
+        ball_grid_ys = [int(round(z_i[1].item() / grid_size)) for z_i in all_ball_xy_concat]
+        min_ball_grid_x, max_ball_grid_x = min(ball_grid_xs), max(ball_grid_xs)
+        min_ball_grid_y, max_ball_grid_y = min(ball_grid_ys), max(ball_grid_ys)
+        print('Min ball grid x: ', min_ball_grid_x, 'Max_ball grid x: ', max_ball_grid_x)
+        print('Min ball grid y: ', min_ball_grid_y, 'max_ball grid y: ', max_ball_grid_y)
+        border = 5  # todo try bigger border and check why it doesn't work as I want it
+        x_range = np.arange(min_ball_grid_x - border, max_ball_grid_x + border)  # x_range isn't float anymore, so why arange todo. Also how did this shift happen?
+        y_range = np.arange(min_ball_grid_x - border, max_ball_grid_y + border + 5)  # todo remove magic number? for blue circle hmm
+        # todo how to get read world values for x and y ticks from this?
         print('x_range: {}. y_range: {}'.format(len(x_range), len(y_range)))
         # import pdb;pdb.set_trace()
         # all_ball_x_y_locations_above_floor = [m[2:4] for m in measurements[0]]; plt.figure(); plt.scatter([x[0] for x in all_ball_x_y_locations_above_floor], [x[1] for x in all_ball_x_y_locations_above_floor], s=1.5); plt.scatter(state[0][0], state[0][1], color='r'); plt.show()
@@ -671,9 +685,9 @@ if __name__ == '__main__':
         # todo keep flipping and analysing the new grid. Confirm angles correct, confirm points correct, confirm x and y axis, borders (not 30) etc
 
     # Define the parameters for the map.  (This is a 60x60m map with grid size 0.1x0.1m)
-
     # map = Map(int(60 / grid_size), int(60 / grid_size), grid_size)
-    map = Map(int(len(x_range)), int(len(y_range)), grid_size, x_range, y_range)
+    map = Map(int(len(x_range)), int(len(y_range)), grid_size, x_range, y_range,
+              min_ball_grid_x, min_ball_grid_y)
 
     # mismatch between real 3d space conversion to 2d top down space to gridspace
     # todo understand what can stay in the same space and what conversions need to be done visualisation
@@ -693,15 +707,14 @@ if __name__ == '__main__':
         map.update_map(state[i, :], measurements[i])  # todo debug bresenham
         # todo why is there stuff at the bottom of -2.0?
 
-        plt.figure()
+        fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 10))
         # Real-Time Plotting
         # (comment out these next lines to make it run super fast, matplotlib is painfully slow)
         pose = state[i, :]
-        # todo each image will have different x and y range. Solution: just make big map?
         # cam_pos_grid_x, cam_pos_grid_y = int(round(pose[0] / grid_size)), \
         #                                  int(round(pose[1] / grid_size))
-        cam_pos_grid_x, cam_pos_grid_y = int(round(pose[0] / grid_size)) + min_ball_x, \
-                                         int(round(pose[1] / grid_size)) - min_ball_y  # todo x is slightly to the right
+        cam_pos_grid_x, cam_pos_grid_y = int(round(pose[0] / grid_size)) + min_ball_grid_x, \
+                                         int(round(pose[1] / grid_size)) - min_ball_grid_y  # todo x is slightly to the right
         # todo border will also affect this! Removed for now. Add + border above.
 
         circle_x_pos, circle_y_pos = cam_pos_grid_x + map.border, cam_pos_grid_y + map.border
@@ -709,33 +722,45 @@ if __name__ == '__main__':
                                                                         circle_y_pos))
         circle = plt.Circle((circle_x_pos, circle_y_pos),
                             radius=1.5, fc='blue')  # todo try without imshow and xticks below (how does imshow affect it anyway?)
-        plt.gca().add_patch(circle)
+        ax.add_patch(circle)
         # todo move/fix arrow
         # arrow = pose[0:2] + np.array([3.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
         # arrow = np.array([cam_pos_grid_x, cam_pos_grid_y]) + np.array([3.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
         # arrow = np.array([cam_pos_grid_x, cam_pos_grid_y]) + np.array([0.5, 0]).dot(np.array([[np.cos(pose[2]), np.sin(pose[2])],
         #                                                      [-np.sin(pose[2]), np.cos(pose[2])]]))  # todo inverted inverted rotations?
-        # # plt.plot([pose[1], arrow[1]], [pose[0], arrow[0]])  # todo why inverted?
-        # plt.plot([cam_pos_grid_y, arrow[1]], [cam_pos_grid_x, arrow[0]])  # todo why inverted?
+        # # ax.plot([pose[1], arrow[1]], [pose[0], arrow[0]])  # todo why inverted?
+        # ax.plot([cam_pos_grid_y, arrow[1]], [cam_pos_grid_x, arrow[0]])  # todo why inverted?
 
         probability_map = 1.0 - 1. / (1. + np.exp(map.log_prob_map))
         # probability_map = probability_map.T  # transpose x, y -> y, x.
-        plt.imshow(probability_map, 'Greys', origin='lower')  # todo how does origin lower affect the circle? not at all? Wait it does affect it!
-        plt.title('Probability map: {}'.format(i))
+        ax.imshow(probability_map, 'Greys', origin='lower')  # todo how does origin lower affect the circle? not at all? Wait it does affect it!
+        ax.set_title('Probability map: {}'.format(i + 1))
         # todo in my original grid y-axis went from top to bottom -2.0 to 4.9 but it covered everything. Why is there a gap?
-        plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])  # todo y ticks are inverted?
-        plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])  # todo x + y ticks are all wrong. 0, 0 is not the corner of the map
+        # ax.set_xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])  # todo y ticks are inverted?
+        # ax.set_yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])  # todo x + y ticks are all wrong. 0, 0 is not the corner of the map
+        # ax.set_xticks([round(x, 1) for x in x_range])
+        # ax.set_yticks([round(y, 1) for y in y_range])
+        import pdb;pdb.set_trace()
+        ax.set_xticks(range(x_range.shape[0]))
+        ax.set_yticks(range(y_range.shape[0]))
+        ax.set_xticklabels([round(x, 1) for x in x_range])
+        ax.set_yticklabels([round(y, 1) for y in y_range])
         plt.xticks(rotation=90)
+        # todo don't show every one since they're jumbled  # ax.set_xticks(ax.get_xticks()[::2]) # or # for label in ax.get_xticklabels()[::2]: label.set_visible(False)
+        # todo y_ticks are messed up
 
-        plt.figure()
         thresholded_map = np.zeros(probability_map.shape)
         thresholded_map[probability_map > 0.7] = 1
-        plt.imshow(thresholded_map, cmap='gray', origin='lower')
-        plt.title('Thresholded map: {}'.format(i))  # todo blue dot on campos
-        plt.xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
-        plt.yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
+        ax2.imshow(thresholded_map, cmap='gray', origin='lower')
+        circle2 = plt.Circle((circle_x_pos, circle_y_pos),
+                            radius=1.5, fc='blue')
+        ax2.add_patch(circle2)
+        ax2.set_title('Thresholded map: {}'.format(i + 1))
+        ax2.set_xticks(range(x_range.shape[0]), [round(x, 1) for x in x_range])
+        ax2.set_yticks(range(y_range.shape[0]), [round(y, 1) for y in y_range])
         plt.xticks(rotation=90)
         plt.pause(0.005)
+        break
 
     # Final Plotting
     # plt.figure()
